@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Test 2FA Step</title>
+<script type="module" src="/background.js"></script>
+<script src="/content.js"></script>
+</head><body>
+<form id="f" onsubmit="event.preventDefault()">
+<div style="position:absolute;left:-9999px"><input id="p" type="password" name="password" autocomplete="current-password"></div>
+<label for="otp">Authentication code</label><input id="otp" type="text" name="otp" autocomplete="one-time-code">
+<button id="go" type="submit">Verify</button>
+</form>
+</body></html>

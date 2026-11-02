@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "Valid Vault Password Manager",
+  "version": "0.9.4.2",
+  "description": "Local encrypted password manager. Unlock by fingerprint or password. No cloud, no accounts. Sync by QR code or encrypted file.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "alarms",
+    "sidePanel",
+    "unlimitedStorage"
+  ],
+  "optional_permissions": [
+    "bookmarks"
+  ],
+  "side_panel": {
+    "default_path": "bookmarks.html"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'none'"
+  }
+}

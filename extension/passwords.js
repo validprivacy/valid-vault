@@ -1,0 +1,1082 @@
+import { encrypt, decrypt, isContextBound } from './crypto.js'
+import { isTotpConfig, parseTotpInput, sameConfig } from './totp.js'
+import { getPasswordVault, setPasswordVault, getVaultMigrationJournal, setVaultMigrationJournal, clearVaultMigrationJournal } from './store.js'
+
+const PREVIOUS_KEEP_MS = 30 * 24 * 60 * 60 * 1000
+const NOTES_LABEL = 'Notes'
+const USE_WRITE_INTERVAL_MS = 10 * 60 * 1000
+const MULTI_PART_SUFFIXES = new Set(['co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'me.uk', 'ltd.uk', 'plc.uk', 'net.uk', 'com.au', 'net.au', 'org.au', 'edu.au', 'gov.au', 'co.nz', 'org.nz', 'net.nz', 'co.jp', 'ne.jp', 'or.jp', 'ac.jp', 'co.kr', 'or.kr', 'com.br', 'net.br', 'org.br', 'com.mx', 'org.mx', 'co.in', 'net.in', 'org.in', 'firm.in', 'co.za', 'org.za', 'com.ar', 'com.tr', 'com.cn', 'net.cn', 'org.cn', 'com.tw', 'org.tw', 'com.hk', 'org.hk', 'com.sg', 'org.sg', 'com.my', 'com.ph', 'com.vn', 'co.id', 'co.th', 'co.il', 'com.sa', 'com.eg', 'com.pk', 'com.ng', 'co.ke', 'com.co', 'com.pe', 'com.ve', 'com.ua', 'co.at', 'or.at', 'com.pl', 'com.es', 'com.pt', 'com.gr', 'com.ru'])
+const SHARED_HOST_SUFFIXES = new Set(['github.io', 'gitlab.io', 'herokuapp.com', 'vercel.app', 'netlify.app', 'pages.dev', 'workers.dev', 'web.app', 'firebaseapp.com', 'appspot.com', 'blogspot.com', 'wordpress.com', 'azurewebsites.net', 'cloudfront.net', 'cloudapp.net', 'amazonaws.com', 'glitch.me', 'onrender.com', 'fly.dev', 'replit.app', 'repl.co', 'ngrok.io', 'ngrok-free.app', 'myshopify.com', 'wixsite.com', 'squarespace.com', 'substack.com', 'tumblr.com', 'neocities.org', 'carrd.co', 'duckdns.org', 'translate.goog', 'webflow.io', 'framer.website', 'notion.site', 'surge.sh', 'bitbucket.io', 'readthedocs.io', 'deno.dev', 'railway.app'])
+const UNGROUPED_HOST_SUFFIXES = new Set(['amazonaws.com'])
+const IPV4_PATTERN = /^\d{1,3}(\.\d{1,3}){3}$/
+const APP_PACKAGE_PATTERN = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/
+const IMPORTED_LINK_STAMP = 1
+
+function retirePassword(cred, oldPassword, now) {
+  if (!oldPassword || oldPassword === cred.password) return
+  cred.previousPassword = oldPassword
+  cred.previousSetAt = now
+  delete cred.newPasswordUses
+}
+
+function clearPrevious(cred) {
+  delete cred.previousPassword
+  delete cred.previousSetAt
+  delete cred.newPasswordUses
+}
+
+function previousExpired(cred, now) {
+  return !!cred.previousPassword && now - (cred.previousSetAt || 0) >= PREVIOUS_KEEP_MS
+}
+
+function previousExpiresAt(setAt) {
+  return (typeof setAt === 'number' && isFinite(setAt) ? setAt : 0) + PREVIOUS_KEEP_MS
+}
+
+function lastUsed(record) {
+  return record && typeof record.lastUsedAt === 'number' && isFinite(record.lastUsedAt) ? record.lastUsedAt : 0
+}
+
+function generateId() {
+  return crypto.randomUUID()
+}
+
+function inferLoginType(identifier) {
+  const v = (identifier || '').trim()
+  if (!v) return 'username'
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'email'
+  if (v.replace(/\D/g, '').length >= 7 && /^[+()\-.\s\d]+$/.test(v)) return 'phone'
+  return 'username'
+}
+
+function isLive(cred) {
+  return !cred.deleted
+}
+
+function totpStamp(record) {
+  return record && typeof record.totpSetAt === 'number' && isFinite(record.totpSetAt) ? record.totpSetAt : 0
+}
+
+function isValidTotpState(credential) {
+  if (credential.totp !== undefined && credential.totp !== null && !isTotpConfig(credential.totp)) return false
+  if (credential.totpSetAt !== undefined && (typeof credential.totpSetAt !== 'number' || !isFinite(credential.totpSetAt))) return false
+  return true
+}
+
+function carryTotp(target, source) {
+  if (!source || !totpStamp(source)) return
+  target.totp = source.totp && isTotpConfig(source.totp) ? Object.assign({}, source.totp) : null
+  target.totpSetAt = totpStamp(source)
+}
+
+function nextTotpStamp(cred, now) {
+  return Math.max(now, totpStamp(cred) + 1)
+}
+
+function importedTotp(entry) {
+  if (!entry || typeof entry.totp !== 'string' || !entry.totp.trim()) return null
+  const parsed = parseTotpInput(entry.totp)
+  return parsed.config || null
+}
+
+function normalizeLabel(label) {
+  return (label || '')
+    .toLowerCase()
+    .replace(/[:*]+$/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
+function isValidAppLinks(links) {
+  if (links === undefined) return true
+  if (!links || typeof links !== 'object' || Array.isArray(links)) return false
+  for (const [pkg, link] of Object.entries(links)) {
+    if (!APP_PACKAGE_PATTERN.test(pkg)) return false
+    if (!link || typeof link !== 'object' || link.id !== pkg) return false
+    if (typeof link.updatedAt !== 'number' || !isFinite(link.updatedAt)) return false
+    if (link.deleted !== undefined && link.deleted !== true) return false
+    if (!link.deleted && (typeof link.site !== 'string' || !link.site)) return false
+    if (link.cert !== undefined && typeof link.cert !== 'string') return false
+  }
+  return true
+}
+
+function isValidVaultTree(value) {
+  if (!value || typeof value !== 'object') return false
+  if (!value.meta || typeof value.meta !== 'object') return false
+  if (!value.credentials || typeof value.credentials !== 'object') return false
+  if (Array.isArray(value.credentials)) return false
+  if (!isValidAppLinks(value.appLinks)) return false
+
+  for (const [domain, credentials] of Object.entries(value.credentials)) {
+    if (typeof domain !== 'string' || !Array.isArray(credentials)) return false
+
+    for (const credential of credentials) {
+      if (!credential || typeof credential !== 'object') return false
+      if (typeof credential.id !== 'string') return false
+      if (credential.deleted !== undefined && typeof credential.deleted !== 'boolean') return false
+      if (!credential.deleted && (
+        typeof credential.username !== 'string' ||
+        typeof credential.password !== 'string'
+      )) {
+        return false
+      }
+      if (!isValidTotpState(credential)) return false
+    }
+  }
+
+  return true
+}
+
+async function decryptLegacyExtraFields(extraFields, masterKey) {
+  const fields = []
+  const unreadable = []
+  for (const field of extraFields || []) {
+    try {
+      fields.push({
+        label: await decrypt(field.label, masterKey),
+        value: await decrypt(field.value, masterKey)
+      })
+    } catch (error) {
+      unreadable.push(field)
+    }
+  }
+  return { fields, unreadable }
+}
+
+async function readLegacyLoginType(stored, masterKey) {
+  if (!stored) return null
+  if (typeof stored === 'string') return stored
+  try {
+    return await decrypt(stored, masterKey)
+  } catch (error) {
+    return null
+  }
+}
+
+async function decryptLegacyTree(legacyTree, masterKey) {
+  const credentials = {}
+  for (const domain of Object.keys(legacyTree.credentials || {})) {
+    const list = []
+    for (const cred of legacyTree.credentials[domain]) {
+      if (cred.deleted) {
+        list.push(cred)
+        continue
+      }
+      const username = await decrypt(cred.username, masterKey)
+      const password = await decrypt(cred.password, masterKey)
+      const extras = await decryptLegacyExtraFields(cred.extraFields, masterKey)
+      const loginType = (await readLegacyLoginType(cred.loginType, masterKey)) || inferLoginType(username)
+      const converted = {
+        ...cred,
+        id: cred.id,
+        username,
+        password,
+        extraFields: extras.fields,
+        loginType,
+        createdAt: cred.createdAt,
+        updatedAt: cred.updatedAt
+      }
+      if (extras.unreadable.length) converted.unreadableExtraFields = extras.unreadable
+      list.push(converted)
+    }
+    credentials[domain] = list
+  }
+
+  return {
+    meta: {
+      version: 2,
+      createdAt: legacyTree.meta.createdAt || Date.now(),
+      lastAccess: Date.now()
+    },
+    credentials
+  }
+}
+
+const VAULT_CONTEXT = 'passwords:vault'
+const JOURNAL_CONTEXT = 'passwords:journal'
+
+async function encryptTree(tree, masterKey) {
+  return encrypt(JSON.stringify(tree), masterKey, VAULT_CONTEXT)
+}
+
+function rowIsBound(row) {
+  return !row || row.schemaVersion !== 2 || !row.blob || isContextBound(row.blob)
+}
+
+const FINGERPRINT_HEX_LENGTH = 64
+
+async function vaultFingerprint(tree) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(tree)))
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function matchesJournalFingerprint(tree, expected) {
+  if (typeof expected !== 'string') return true
+  if (expected.length === FINGERPRINT_HEX_LENGTH && /^[0-9a-f]+$/.test(expected)) {
+    return (await vaultFingerprint(tree)) === expected
+  }
+  return JSON.stringify(tree) === expected
+}
+
+function dropUnreadableTotp(tree) {
+  if (!tree || !tree.credentials || typeof tree.credentials !== 'object') return tree
+  for (const list of Object.values(tree.credentials)) {
+    if (!Array.isArray(list)) continue
+    for (const credential of list) {
+      if (!credential || typeof credential !== 'object' || isValidTotpState(credential)) continue
+      delete credential.totp
+      delete credential.totpSetAt
+    }
+  }
+  return tree
+}
+
+async function decryptTree(blob, masterKey) {
+  const json = await decrypt(blob, masterKey, VAULT_CONTEXT)
+  const parsed = dropUnreadableTotp(JSON.parse(json))
+  if (!isValidVaultTree(parsed)) {
+    throw new Error('Vault data has an unexpected shape')
+  }
+  return parsed
+}
+
+async function decryptAnyRowToTree(row, masterKey) {
+  if (!row) {
+    return {
+      meta: { version: 2, createdAt: Date.now(), lastAccess: Date.now() },
+      credentials: {}
+    }
+  }
+  if (row.schemaVersion === 2) {
+    if (!row.blob) throw new Error('Vault blob is missing')
+    return decryptTree(row.blob, masterKey)
+  }
+  if (row.schemaVersion !== undefined) {
+    throw new Error('Unsupported vault schema version')
+  }
+  const legacyTree = { meta: row.meta || {}, credentials: row.credentials || {} }
+  return decryptLegacyTree(legacyTree, masterKey)
+}
+
+async function finalizeMigration(masterKey) {
+  const journal = await getVaultMigrationJournal()
+  const written = await getPasswordVault()
+  let writtenTree
+  try {
+    writtenTree = await decryptTree(written.blob, masterKey)
+  } catch (error) {
+    await rollbackMigration(masterKey, 'Vault migration failed verification and was reverted')
+    return { migrated: false, status: 'rolled-back' }
+  }
+
+  if (journal && journal.expected && !(await matchesJournalFingerprint(writtenTree, journal.expected))) {
+    await rollbackMigration(masterKey, 'Vault migration verification failed and was reverted')
+    return { migrated: false, status: 'rolled-back' }
+  }
+
+  await clearVaultMigrationJournal()
+  return { migrated: true, status: 'complete' }
+}
+
+async function rollbackMigration(masterKey, message) {
+  const journal = await getVaultMigrationJournal()
+  if (journal && journal.backup) {
+    const legacyRowJson = await decrypt(journal.backup, masterKey, JOURNAL_CONTEXT)
+    const legacyRow = JSON.parse(legacyRowJson)
+    await setPasswordVault(legacyRow)
+  }
+  await clearVaultMigrationJournal()
+  throw new Error(message)
+}
+
+async function migrateLegacyVault(masterKey) {
+  const journal = await getVaultMigrationJournal()
+  if (journal) {
+    return finalizeMigration(masterKey)
+  }
+
+  const current = await getPasswordVault()
+
+  if (!current) {
+    const tree = {
+      meta: { version: 2, createdAt: Date.now(), lastAccess: Date.now() },
+      credentials: {}
+    }
+    await setPasswordVault({ id: 'vault', schemaVersion: 2, blob: await encryptTree(tree, masterKey) })
+    return { migrated: false, status: 'created' }
+  }
+
+  if (current.schemaVersion === 2) {
+    return { migrated: false, status: 'already-current' }
+  }
+
+  if (current.schemaVersion !== undefined) {
+    throw new Error('Unsupported vault schema version')
+  }
+
+  const legacyTree = { meta: current.meta || {}, credentials: current.credentials || {} }
+  const plainTree = await decryptLegacyTree(legacyTree, masterKey)
+  const encryptedBackup = await encrypt(JSON.stringify(current), masterKey, JOURNAL_CONTEXT)
+  const expected = await vaultFingerprint(plainTree)
+
+  await setVaultMigrationJournal({ status: 'prepared', backup: encryptedBackup, expected, createdAt: Date.now() })
+
+  const blob = await encryptTree(plainTree, masterKey)
+  await setPasswordVault({ id: 'vault', schemaVersion: 2, blob })
+
+  return finalizeMigration(masterKey)
+}
+
+async function readVaultTree(masterKey) {
+  await migrateLegacyVault(masterKey)
+  const row = await getPasswordVault()
+  return decryptTree(row.blob, masterKey)
+}
+
+async function writeVaultTree(tree, masterKey) {
+  const blob = await encryptTree(tree, masterKey)
+  await setPasswordVault({ id: 'vault', schemaVersion: 2, blob })
+}
+
+async function ensureVault(masterKey) {
+  await migrateLegacyVault(masterKey)
+  return { success: true }
+}
+
+async function saveCredential(domain, username, password, masterKey, extraFields, loginType) {
+  const tree = await readVaultTree(masterKey)
+
+  if (!tree.credentials[domain]) {
+    tree.credentials[domain] = []
+  }
+
+  const existing = []
+  let existingId = null
+  let existingCreatedAt = null
+  let existingLoginType = null
+  let existingExtraFields = []
+  let existingCred = null
+  for (const cred of tree.credentials[domain]) {
+    if (cred.deleted) {
+      existing.push(cred)
+      continue
+    }
+    if (cred.username === username) {
+      existingId = cred.id
+      existingCreatedAt = cred.createdAt
+      existingLoginType = cred.loginType || null
+      existingExtraFields = cred.extraFields || []
+      existingCred = cred
+      continue
+    }
+    existing.push(cred)
+  }
+
+  const mergedExtraFields = existingExtraFields.slice()
+  for (const field of (extraFields || [])) {
+    if (!field || !field.label || !field.value) continue
+    const idx = mergedExtraFields.findIndex((f) => normalizeLabel(f.label) === normalizeLabel(field.label))
+    if (idx !== -1) mergedExtraFields[idx] = { label: mergedExtraFields[idx].label, value: field.value }
+    else mergedExtraFields.push({ label: field.label, value: field.value })
+  }
+
+  const resolvedLoginType = loginType || existingLoginType || inferLoginType(username)
+  const now = Date.now()
+  const id = existingId || generateId()
+  const saved = {
+    id,
+    username,
+    password,
+    extraFields: mergedExtraFields,
+    loginType: resolvedLoginType,
+    createdAt: existingCreatedAt || now,
+    updatedAt: existingCred ? Math.max(now, stamp(existingCred) + 1) : now
+  }
+  if (existingCred && existingCred.password !== password) {
+    retirePassword(saved, existingCred.password, now)
+  } else if (existingCred && existingCred.previousPassword && !previousExpired(existingCred, now)) {
+    saved.previousPassword = existingCred.previousPassword
+    saved.previousSetAt = existingCred.previousSetAt
+  }
+  if (existingCred && lastUsed(existingCred)) saved.lastUsedAt = lastUsed(existingCred)
+  carryTotp(saved, existingCred)
+  existing.push(saved)
+
+  tree.credentials[domain] = existing
+  tree.meta.lastAccess = now
+
+  await writeVaultTree(tree, masterKey)
+  return { success: true, id }
+}
+
+function siteOf(host) {
+  const value = String(host || '').toLowerCase().replace(/\.$/, '')
+  if (!value || IPV4_PATTERN.test(value) || value.includes(':')) return value
+  const labels = value.split('.')
+  if (labels.length < 2) return value
+  const lastTwo = labels.slice(-2).join('.')
+  if (UNGROUPED_HOST_SUFFIXES.has(lastTwo)) return value
+  if (SHARED_HOST_SUFFIXES.has(lastTwo)) return labels.length >= 3 ? labels.slice(-3).join('.') : value
+  if (MULTI_PART_SUFFIXES.has(lastTwo)) return labels.length >= 3 ? labels.slice(-3).join('.') : value
+  return lastTwo
+}
+
+function visibleCredential(cred, now) {
+  const keepPrevious = !!cred.previousPassword && !previousExpired(cred, now)
+  return {
+    id: cred.id,
+    username: cred.username,
+    password: cred.password,
+    extraFields: cred.extraFields || [],
+    loginType: cred.loginType || inferLoginType(cred.username),
+    previousPassword: keepPrevious ? cred.previousPassword : null,
+    previousSetAt: keepPrevious ? cred.previousSetAt || null : null,
+    previousUntil: keepPrevious ? previousExpiresAt(cred.previousSetAt) : null,
+    lastUsedAt: lastUsed(cred) || null,
+    totp: cred.totp && isTotpConfig(cred.totp) ? Object.assign({}, cred.totp) : null,
+    createdAt: cred.createdAt,
+    updatedAt: cred.updatedAt
+  }
+}
+
+function relatedCredentials(tree, domain) {
+  const site = siteOf(domain)
+  const exact = String(domain || '').toLowerCase()
+  const now = Date.now()
+  const groups = []
+  if (!site) return groups
+  for (const other of Object.keys(tree.credentials || {}).sort()) {
+    if (other === exact || siteOf(other) !== site) continue
+    const credentials = (tree.credentials[other] || []).filter((cred) => !cred.deleted).map((cred) => visibleCredential(cred, now))
+    if (credentials.length) groups.push({ domain: other, credentials })
+  }
+  return groups
+}
+
+async function getRelatedCredentials(domain, masterKey) {
+  let tree
+  try {
+    tree = await readVaultTree(masterKey)
+  } catch (error) {
+    return { success: false, error: 'Decryption failed', groups: [] }
+  }
+  return { success: true, groups: relatedCredentials(tree, domain) }
+}
+
+async function getCredentials(domain, masterKey) {
+  let tree
+  try {
+    tree = await readVaultTree(masterKey)
+  } catch (error) {
+    return { success: false, error: 'Decryption failed' }
+  }
+
+  const domainCreds = tree.credentials[domain]
+  if (!domainCreds || domainCreds.length === 0) {
+    return { success: true, credentials: [] }
+  }
+
+  const now = Date.now()
+  const result = domainCreds.filter((cred) => !cred.deleted).map((cred) => visibleCredential(cred, now))
+  return { success: true, credentials: result }
+}
+
+async function updateCredential(credentialId, updates, masterKey) {
+  let tree
+  try {
+    tree = await readVaultTree(masterKey)
+  } catch (error) {
+    return { success: false, error: 'Decryption failed' }
+  }
+
+  for (const domain of Object.keys(tree.credentials)) {
+    const creds = tree.credentials[domain]
+    const index = creds.findIndex((candidate) => candidate.id === credentialId)
+
+    if (index !== -1) {
+      if (creds[index].deleted) return { success: false, error: 'Credential deleted' }
+      if (updates.username) creds[index].username = updates.username
+      if (updates.password && updates.password !== creds[index].password) {
+        const oldPassword = creds[index].password
+        creds[index].password = updates.password
+        retirePassword(creds[index], oldPassword, Date.now())
+      }
+      if (updates.extraFields) creds[index].extraFields = updates.extraFields
+      if (updates.loginType) creds[index].loginType = updates.loginType
+      if (updates.totp !== undefined) {
+        if (updates.totp !== null && !isTotpConfig(updates.totp)) return { success: false, error: 'That 2FA setup key is not valid' }
+        creds[index].totp = updates.totp === null ? null : Object.assign({}, updates.totp)
+        creds[index].totpSetAt = nextTotpStamp(creds[index], Date.now())
+      }
+      creds[index].updatedAt = Math.max(Date.now(), stamp(creds[index]) + 1)
+      tree.meta.lastAccess = Date.now()
+
+      await writeVaultTree(tree, masterKey)
+      return { success: true }
+    }
+  }
+
+  return { success: false, error: 'Credential not found' }
+}
+
+function findLiveCredential(tree, domain, username) {
+  const creds = tree.credentials[domain] || []
+  return creds.find((cred) => !cred.deleted && cred.username === username) || null
+}
+
+async function noteCredentialUse(domain, username, masterKey) {
+  const tree = await readVaultTree(masterKey)
+  const cred = findLiveCredential(tree, domain, username)
+  if (!cred) return { success: true, changed: false }
+  const now = Date.now()
+  const expired = previousExpired(cred, now)
+  const recent = typeof cred.lastUsedAt === 'number' && now - cred.lastUsedAt < USE_WRITE_INTERVAL_MS && now >= cred.lastUsedAt
+  if (recent && !expired && cred.newPasswordUses === undefined) return { success: true, changed: false }
+  cred.lastUsedAt = now
+  delete cred.newPasswordUses
+  if (expired) clearPrevious(cred)
+  await writeVaultTree(tree, masterKey)
+  return { success: true, changed: true }
+}
+
+async function restorePreviousPassword(domain, username, masterKey) {
+  const tree = await readVaultTree(masterKey)
+  const cred = findLiveCredential(tree, domain, username)
+  if (!cred || !cred.previousPassword) return { success: false, error: 'No previous password saved' }
+  const now = Date.now()
+  if (previousExpired(cred, now)) {
+    clearPrevious(cred)
+    await writeVaultTree(tree, masterKey)
+    return { success: false, error: 'The previous password has expired' }
+  }
+  const current = cred.password
+  cred.password = cred.previousPassword
+  retirePassword(cred, current, now)
+  cred.updatedAt = Math.max(now, stamp(cred) + 1)
+  tree.meta.lastAccess = now
+  await writeVaultTree(tree, masterKey)
+  return { success: true }
+}
+
+async function deleteCredential(credentialId, masterKey) {
+  let tree
+  try {
+    tree = await readVaultTree(masterKey)
+  } catch (error) {
+    return { success: false, error: 'Decryption failed' }
+  }
+
+  for (const domain of Object.keys(tree.credentials)) {
+    const creds = tree.credentials[domain]
+    const index = creds.findIndex((candidate) => candidate.id === credentialId)
+
+    if (index !== -1) {
+      const now = Date.now()
+      const tombstone = {
+        id: creds[index].id,
+        deleted: true,
+        deletedAt: now,
+        updatedAt: Math.max(now, stamp(creds[index]) + 1)
+      }
+      if (typeof creds[index].username === 'string') tombstone.username = creds[index].username
+      creds[index] = tombstone
+
+      tree.meta.lastAccess = Date.now()
+      await writeVaultTree(tree, masterKey)
+      return { success: true }
+    }
+  }
+
+  return { success: false, error: 'Credential not found' }
+}
+
+function stamp(record) {
+  return typeof record.updatedAt === 'number' && isFinite(record.updatedAt) ? record.updatedAt : 0
+}
+
+function laterRecord(a, b) {
+  const at = stamp(a)
+  const bt = stamp(b)
+  if (at !== bt) return at > bt ? a : b
+  if (a.deleted && !b.deleted) return a
+  if (b.deleted && !a.deleted) return b
+  return JSON.stringify(a) >= JSON.stringify(b) ? a : b
+}
+
+function withLatestUse(chosen, a, b, identities) {
+  if (chosen.deleted) return chosen
+  const latest = Math.max(lastUsed(a), lastUsed(b))
+  if (!latest || lastUsed(chosen) === latest) return chosen
+  const copy = Object.assign({}, chosen, { lastUsedAt: latest })
+  identities.set(copy, identities.get(chosen))
+  return copy
+}
+
+function mergeRecordLists(localList, incomingList, identities) {
+  const all = [...localList, ...incomingList]
+  const byId = new Map()
+  for (const record of all) {
+    const current = byId.get(record.id)
+    byId.set(record.id, current ? withLatestUse(laterRecord(current, record), current, record, identities) : record)
+  }
+  const winners = Array.from(byId.values())
+  const byIdentity = new Map()
+  for (const record of winners) {
+    if (record.deleted) continue
+    const identity = identities.get(record)
+    const current = byIdentity.get(identity)
+    byIdentity.set(identity, current ? laterRecord(current, record) : record)
+  }
+  const deletedAt = new Map()
+  for (const record of winners) {
+    if (!record.deleted) continue
+    const identity = identities.get(record)
+    if (identity === undefined) continue
+    deletedAt.set(identity, Math.max(deletedAt.get(identity) || 0, stamp(record)))
+  }
+  const keep = new Set()
+  for (const [identity, record] of byIdentity) {
+    if ((deletedAt.get(identity) || 0) > stamp(record)) continue
+    keep.add(record)
+  }
+  for (const record of winners) if (record.deleted) keep.add(record)
+  const out = []
+  const placed = new Set()
+  for (const record of all) {
+    const chosen = byId.get(record.id)
+    if (!keep.has(chosen) || placed.has(chosen)) continue
+    if (!chosen.deleted) { out.push(chosen); placed.add(chosen) }
+  }
+  for (const record of all) {
+    const chosen = byId.get(record.id)
+    if (!keep.has(chosen) || placed.has(chosen)) continue
+    out.push(chosen)
+    placed.add(chosen)
+  }
+  return out.map((record) => withNewestTotp(record, all, identities, byId))
+}
+
+function laterTotp(a, b) {
+  const at = totpStamp(a)
+  const bt = totpStamp(b)
+  if (at !== bt) return at > bt ? a : b
+  const aOff = !a.totp
+  const bOff = !b.totp
+  if (aOff !== bOff) return aOff ? a : b
+  return JSON.stringify(a.totp || null) >= JSON.stringify(b.totp || null) ? a : b
+}
+
+function withNewestTotp(record, all, identities, byId) {
+  if (record.deleted) return record
+  const identity = identities.get(record)
+  let best = null
+  for (const candidate of all) {
+    if (candidate.deleted || !totpStamp(candidate)) continue
+    const winner = byId.get(candidate.id)
+    if (!winner || winner.deleted) continue
+    if (candidate.id !== record.id && (identity === undefined || identities.get(candidate) !== identity)) continue
+    best = best ? laterTotp(best, candidate) : candidate
+  }
+  if (!best) return record
+  if (totpStamp(best) === totpStamp(record) && sameConfig(best.totp || null, record.totp || null)) return record
+  const copy = Object.assign({}, record)
+  carryTotp(copy, best)
+  identities.set(copy, identity)
+  return copy
+}
+
+function credentialIdentity(cred) {
+  if (cred.deleted) return typeof cred.username === 'string' ? 'user:' + cred.username : undefined
+  return 'user:' + cred.username
+}
+
+function mergeAppLinks(localLinks, incomingLinks) {
+  const out = {}
+  const local = localLinks || {}
+  const incoming = incomingLinks || {}
+  const packages = new Set([...Object.keys(local), ...Object.keys(incoming)])
+  for (const pkg of Array.from(packages).sort()) {
+    const a = local[pkg]
+    const b = incoming[pkg]
+    out[pkg] = a && b ? laterRecord(a, b) : (a || b)
+  }
+  return out
+}
+
+function liveAppLinks(tree) {
+  const out = {}
+  for (const [pkg, link] of Object.entries(tree.appLinks || {})) {
+    if (!link.deleted) out[pkg] = link.site
+  }
+  return out
+}
+
+async function listAppLinks(masterKey) {
+  return liveAppLinks(await readVaultTree(masterKey))
+}
+
+function nextStamp(previous) {
+  const now = Date.now()
+  return previous && typeof previous.updatedAt === 'number' && previous.updatedAt >= now ? previous.updatedAt + 1 : now
+}
+
+async function setAppLink(pkg, site, masterKey, cert) {
+  if (!APP_PACKAGE_PATTERN.test(pkg) || typeof site !== 'string' || !site) throw new Error('Invalid app link')
+  const tree = await readVaultTree(masterKey)
+  const links = Object.assign({}, tree.appLinks || {})
+  const previous = links[pkg]
+  const certValue = typeof cert === 'string' ? cert : ''
+  if (previous && !previous.deleted && previous.site === site && (previous.cert || '') === certValue) return
+  links[pkg] = { id: pkg, site, updatedAt: nextStamp(previous) }
+  if (certValue) links[pkg].cert = certValue
+  tree.appLinks = links
+  await writeVaultTree(tree, masterKey)
+}
+
+async function removeAppLink(pkg, masterKey) {
+  const tree = await readVaultTree(masterKey)
+  const links = Object.assign({}, tree.appLinks || {})
+  const previous = links[pkg]
+  if (!previous || previous.deleted) return
+  links[pkg] = { id: pkg, deleted: true, updatedAt: nextStamp(previous) }
+  tree.appLinks = links
+  await writeVaultTree(tree, masterKey)
+}
+
+function mergeVaults(localTree, incomingTree) {
+  const merged = {
+    meta: {
+      version: 2,
+      createdAt: Math.min(localTree.meta.createdAt || Date.now(), incomingTree.meta.createdAt || Date.now()),
+      lastAccess: Date.now()
+    },
+    credentials: {}
+  }
+
+  const domains = new Set([
+    ...Object.keys(localTree.credentials),
+    ...Object.keys(incomingTree.credentials)
+  ])
+
+  for (const domain of domains) {
+    const localCreds = localTree.credentials[domain] || []
+    const incomingCreds = incomingTree.credentials[domain] || []
+    const identities = new Map()
+    for (const cred of [...localCreds, ...incomingCreds]) identities.set(cred, credentialIdentity(cred))
+    const result = mergeRecordLists(localCreds, incomingCreds, identities)
+    if (result.length > 0) merged.credentials[domain] = result
+  }
+
+  const appLinks = mergeAppLinks(localTree.appLinks, incomingTree.appLinks)
+  if (Object.keys(appLinks).length > 0) merged.appLinks = appLinks
+
+  return merged
+}
+
+function canonicalCredentials(tree) {
+  const out = {}
+  for (const domain of Object.keys(tree.credentials || {}).sort()) {
+    const list = tree.credentials[domain].slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    if (list.length > 0) out[domain] = list
+  }
+  const links = {}
+  for (const pkg of Object.keys(tree.appLinks || {}).sort()) links[pkg] = tree.appLinks[pkg]
+  return JSON.stringify({ credentials: out, appLinks: links })
+}
+
+function sameCredentials(a, b) {
+  return canonicalCredentials(a) === canonicalCredentials(b)
+}
+
+function liveCredential(list, username) {
+  return list.find((cred) => !cred.deleted && cred.username === username) || null
+}
+
+function deletedCredential(list, username) {
+  let newest = null
+  for (const cred of list) {
+    if (!cred.deleted || cred.username !== username) continue
+    if (!newest || stamp(cred) > stamp(newest)) newest = cred
+  }
+  return newest
+}
+
+function blocksImport(tombstone, entry) {
+  if (!tombstone) return false
+  return !(entry.changedAt && entry.changedAt > stamp(tombstone))
+}
+
+function entryKey(entry) {
+  return entry.site + '\n' + entry.username
+}
+
+function groupEntries(entries) {
+  const groups = new Map()
+  for (const entry of entries) {
+    const key = entryKey(entry)
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(entry)
+  }
+  return groups
+}
+
+function uniqueSite(sites) {
+  const distinct = Array.from(new Set(sites))
+  return distinct.length === 1 ? distinct[0] : null
+}
+
+function sameSecret(a, b) {
+  return a.username === b.username && a.password === b.password
+}
+
+function matchImportedApps(tree, entries, apps) {
+  const links = new Map()
+  const addLink = (pkg, site) => { if (APP_PACKAGE_PATTERN.test(pkg) && !links.has(pkg)) links.set(pkg, site) }
+  for (const entry of entries) if (entry.app && entry.site) addLink(entry.app, entry.site)
+  const resolved = []
+  const open = []
+  for (const app of apps || []) {
+    const existing = (tree.appLinks || {})[app.app]
+    let site = existing && !existing.deleted ? existing.site : null
+    if (!site) site = links.get(app.app) || null
+    if (!site) site = uniqueSite(entries.filter((entry) => entry.site && sameSecret(entry, app)).map((entry) => entry.site))
+    if (!site) {
+      const matches = []
+      for (const [domain, list] of Object.entries(tree.credentials || {})) {
+        if (list.some((cred) => isLive(cred) && sameSecret(cred, app))) matches.push(domain)
+      }
+      site = uniqueSite(matches)
+    }
+    if (site) {
+      resolved.push(Object.assign({}, app, { site }))
+      addLink(app.app, site)
+    } else {
+      open.push(Object.assign({}, app, { linkable: !existing }))
+    }
+  }
+  return { resolved, open, links: Array.from(links, ([pkg, site]) => ({ pkg, site })) }
+}
+
+async function matchImportedAppsFor(entries, apps, masterKey) {
+  return matchImportedApps(await readVaultTree(masterKey), entries, apps)
+}
+
+function newAppLinks(tree, links) {
+  const existing = tree.appLinks || {}
+  const seen = new Set()
+  const out = []
+  for (const link of links || []) {
+    if (!link || !APP_PACKAGE_PATTERN.test(link.pkg) || typeof link.site !== 'string' || !link.site) continue
+    if (existing[link.pkg] || seen.has(link.pkg)) continue
+    seen.add(link.pkg)
+    out.push(link)
+  }
+  return out
+}
+
+function isPublicSuffix(site) {
+  const host = String(site || '').toLowerCase()
+  return !host.includes('.') || MULTI_PART_SUFFIXES.has(host) || SHARED_HOST_SUFFIXES.has(host)
+}
+
+function previewLoginImport(tree, entries, links) {
+  const counts = { fresh: 0, same: 0, conflicts: 0, deleted: 0, fileDuplicates: 0, codes: 0, links: newAppLinks(tree, links).length }
+  for (const group of groupEntries(entries).values()) {
+    const distinct = Array.from(new Set(group.map((entry) => entry.password)))
+    const first = group[0]
+    const list = tree.credentials[first.site] || []
+    const live = liveCredential(list, first.username)
+    const carriesCode = group.some((entry) => importedTotp(entry))
+    if (live) {
+      counts.fileDuplicates += distinct.length - 1
+      if (distinct.length === 1 && distinct[0] === live.password) counts.same++
+      else counts.conflicts++
+      if (carriesCode && !totpStamp(live)) counts.codes++
+      continue
+    }
+    if (group.every((entry) => blocksImport(deletedCredential(list, entry.username), entry))) { counts.deleted++; continue }
+    counts.fileDuplicates += distinct.length - 1
+    counts.fresh++
+    if (carriesCode) counts.codes++
+  }
+  return counts
+}
+
+async function previewLoginImportFor(entries, masterKey, links) {
+  return previewLoginImport(await readVaultTree(masterKey), entries, links)
+}
+
+function importedCredential(entry, now) {
+  const extraFields = entry.note ? [{ label: NOTES_LABEL, value: entry.note }] : []
+  const record = {
+    id: generateId(),
+    username: entry.username,
+    password: entry.password,
+    extraFields,
+    loginType: inferLoginType(entry.username),
+    createdAt: now,
+    updatedAt: now
+  }
+  const code = importedTotp(entry)
+  if (code) {
+    record.totp = code
+    record.totpSetAt = now
+  }
+  return record
+}
+
+function withGroupTotp(winner, group) {
+  if (importedTotp(winner)) return winner
+  const donor = group.find((entry) => importedTotp(entry))
+  return donor ? Object.assign({}, winner, { totp: donor.totp }) : winner
+}
+
+async function settleFileDuplicates(entries, decide) {
+  const settled = []
+  let dropped = 0
+  for (const group of groupEntries(entries).values()) {
+    let winner = group[0]
+    for (const entry of group.slice(1)) {
+      if (entry.password === winner.password) {
+        if (!winner.changedAt && entry.changedAt) winner = Object.assign({}, winner, { changedAt: entry.changedAt })
+        continue
+      }
+      const choice = await decide({
+        kind: 'file',
+        site: entry.site,
+        username: entry.username,
+        current: { password: winner.password, changedAt: winner.changedAt || null },
+        incoming: { password: entry.password, changedAt: entry.changedAt || null }
+      })
+      if (choice !== 'current' && choice !== 'incoming') return null
+      if (choice === 'incoming') winner = entry
+      dropped++
+    }
+    settled.push(withGroupTotp(winner, group))
+  }
+  return { settled, dropped }
+}
+
+function addImportedCode(live, entry, now, stats) {
+  const code = importedTotp(entry)
+  if (!code || totpStamp(live)) return false
+  live.totp = code
+  live.totpSetAt = now
+  live.updatedAt = Math.max(now, stamp(live) + 1)
+  stats.codes++
+  stats.changed = true
+  return true
+}
+
+function applyImport(tree, entries, choiceFor, now) {
+  const stats = { added: 0, same: 0, kept: 0, replaced: 0, deleted: 0, codes: 0, changed: false }
+  entries.forEach((entry, index) => {
+    const list = tree.credentials[entry.site] || []
+    const live = liveCredential(list, entry.username)
+    if (live) {
+      addImportedCode(live, entry, now, stats)
+      if (live.password === entry.password) { stats.same++; return }
+      const choice = choiceFor(index, live)
+      if (choice === 'incoming') {
+        const oldPassword = live.password
+        live.password = entry.password
+        retirePassword(live, oldPassword, now)
+        stats.replaced++
+      } else {
+        live.previousPassword = entry.password
+        live.previousSetAt = now
+        delete live.newPasswordUses
+        stats.kept++
+      }
+      live.updatedAt = Math.max(now, stamp(live) + 1)
+      stats.changed = true
+      return
+    }
+    if (blocksImport(deletedCredential(list, entry.username), entry)) { stats.deleted++; return }
+    if (!tree.credentials[entry.site]) tree.credentials[entry.site] = list
+    const created = importedCredential(entry, now)
+    if (created.totp) stats.codes++
+    list.push(created)
+    stats.added++
+    stats.changed = true
+  })
+  return stats
+}
+
+async function importLogins(entries, masterKey, decide, links) {
+  const now = Date.now()
+  const previousUntil = now + PREVIOUS_KEEP_MS
+  const dedup = await settleFileDuplicates(entries, decide)
+  if (!dedup) return { cancelled: true, changed: false }
+  const snapshot = await readVaultTree(masterKey)
+  const decisions = new Map()
+  for (let index = 0; index < dedup.settled.length; index++) {
+    const entry = dedup.settled[index]
+    const live = liveCredential(snapshot.credentials[entry.site] || [], entry.username)
+    if (!live || live.password === entry.password) continue
+    const choice = await decide({
+      kind: 'vault',
+      site: entry.site,
+      username: entry.username,
+      current: { password: live.password, changedAt: stamp(live) || null, lastUsedAt: lastUsed(live) || null },
+      incoming: { password: entry.password, changedAt: entry.changedAt || null },
+      previousUntil
+    })
+    if (choice !== 'current' && choice !== 'incoming') return { cancelled: true, changed: false }
+    decisions.set(index, { choice, password: live.password })
+  }
+  const tree = await readVaultTree(masterKey)
+  const stats = applyImport(tree, dedup.settled, (index, live) => {
+    const decided = decisions.get(index)
+    if (decided && decided.password === live.password) return decided.choice
+    return 'current'
+  }, now)
+  const fresh = newAppLinks(tree, links)
+  if (fresh.length) {
+    const appLinks = Object.assign({}, tree.appLinks || {})
+    for (const link of fresh) appLinks[link.pkg] = { id: link.pkg, site: link.site, updatedAt: IMPORTED_LINK_STAMP }
+    tree.appLinks = appLinks
+    stats.changed = true
+  }
+  stats.linked = fresh.length
+  if (stats.changed) {
+    tree.meta.lastAccess = now
+    await writeVaultTree(tree, masterKey)
+  }
+  return Object.assign({ cancelled: false, fileDuplicates: dedup.dropped, previousUntil }, stats)
+}
+
+export {
+  ensureVault,
+  saveCredential,
+  getCredentials,
+  getRelatedCredentials,
+  relatedCredentials,
+  siteOf,
+  updateCredential,
+  deleteCredential,
+  noteCredentialUse,
+  restorePreviousPassword,
+  previewLoginImport,
+  previewLoginImportFor,
+  matchImportedApps,
+  matchImportedAppsFor,
+  isPublicSuffix,
+  importLogins,
+  previousExpiresAt,
+  PREVIOUS_KEEP_MS,
+  setAppLink,
+  removeAppLink,
+  listAppLinks,
+  mergeVaults,
+  mergeRecordLists,
+  laterRecord,
+  sameCredentials,
+  migrateLegacyVault,
+  rowIsBound,
+  readVaultTree,
+  writeVaultTree,
+  decryptAnyRowToTree
+}

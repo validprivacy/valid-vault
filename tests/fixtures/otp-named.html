@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Test 2FA Named</title>
+<script type="module" src="/background.js"></script>
+<script src="/content.js"></script>
+</head><body>
+<form id="f" onsubmit="event.preventDefault()">
+<div><label for="code">Verification code</label><input id="code" type="tel" name="totp_code"></div>
+<div><label for="search">Search</label><input id="search" type="text" name="q"></div>
+<button id="go" type="submit">Verify</button>
+</form>
+</body></html>

@@ -1,0 +1,2910 @@
+package com.valid.vault;
+
+import android.Manifest;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
+import android.graphics.drawable.RippleDrawable;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+import android.text.InputType;
+import android.text.TextUtils;
+import android.text.format.Formatter;
+import android.util.Base64;
+import android.util.TypedValue;
+import android.view.DragEvent;
+import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.webkit.CookieManager;
+import android.webkit.GeolocationPermissions;
+import android.webkit.PermissionRequest;
+import android.webkit.RenderProcessGoneDetail;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
+import android.webkit.WebStorage;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebViewDatabase;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.PopupMenu;
+import android.widget.ProgressBar;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.RequiresApi;
+import androidx.webkit.JavaScriptReplyProxy;
+import androidx.webkit.ProxyController;
+import androidx.webkit.WebMessageCompat;
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
+
+import org.json.JSONObject;
+
+import java.io.ByteArrayInputStream;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
+
+public class BrowserActivity extends Activity {
+
+    static final String EXTRA_URL = "vv_browser_url";
+    static final String EXTRA_FOCUS = "vv_browser_focus";
+    static final String ACTION_SEARCH = "com.valid.vault.SEARCH";
+
+    private static final String DATA_SUFFIX = "browser";
+    private static final String TASK_LABEL = "Search";
+    private static final int NIGHT_BG = Color.parseColor("#16181B");
+    private static final int NIGHT_BAR = Color.parseColor("#1E2125");
+    private static final int NIGHT_TEXT = Color.parseColor("#E9EBEE");
+    private static final int NIGHT_DIM = Color.parseColor("#9AA0A6");
+    private static final int NIGHT_INK = Color.parseColor("#E6E9ED");
+    private static final int NIGHT_FAINT = Color.parseColor("#33383E");
+    private static final int NIGHT_RIM_START = Color.parseColor("#F4F6F8");
+    private static final int NIGHT_RIM_END = Color.parseColor("#8A9098");
+    private static final int NIGHT_BODY_TOP = Color.parseColor("#16181B");
+    private static final int NIGHT_BODY_BOTTOM = Color.parseColor("#22262B");
+    private static final int NIGHT_INNER = Color.parseColor("#59000000");
+    private static final int NIGHT_DROP = Color.parseColor("#59000000");
+    private static final int NIGHT_ICON = Color.parseColor("#DFE2E6");
+    private static final int NIGHT_ICON_HIGH = Color.parseColor("#4DFFFFFF");
+    private static final int NIGHT_ICON_LOW = Color.parseColor("#B3000000");
+    private static final int NIGHT_HALO = Color.argb(230, 0, 0, 0);
+    private static final int DAY_BG = Color.parseColor("#F4F1EA");
+    private static final int DAY_BAR = Color.parseColor("#FBFAF7");
+    private static final int DAY_TEXT = Color.parseColor("#1D1E21");
+    private static final int DAY_DIM = Color.parseColor("#66645F");
+    private static final int DAY_INK = Color.parseColor("#1D1E21");
+    private static final int DAY_FAINT = Color.parseColor("#DDD7CC");
+    private static final int DAY_RIM_START = Color.parseColor("#4A4C52");
+    private static final int DAY_RIM_END = Color.parseColor("#0E0F11");
+    private static final int DAY_BODY_TOP = Color.parseColor("#E9E5DC");
+    private static final int DAY_BODY_BOTTOM = Color.parseColor("#FBFAF7");
+    private static final int DAY_INNER = Color.parseColor("#40000000");
+    private static final int DAY_DROP = Color.parseColor("#4D000000");
+    private static final int DAY_ICON = Color.parseColor("#2A2C30");
+    private static final int DAY_ICON_HIGH = Color.parseColor("#40000000");
+    private static final int DAY_ICON_LOW = Color.parseColor("#CCFFFFFF");
+    private static final int DAY_HALO = Color.argb(235, 251, 250, 247);
+    private static final int TOR_NIGHT_BAR = Color.parseColor("#1C1030");
+    private static final int TOR_NIGHT_ACCENT = Color.parseColor("#C29BFF");
+    private static final int TOR_NIGHT_RIM_START = Color.parseColor("#E2D2FF");
+    private static final int TOR_NIGHT_RIM_END = Color.parseColor("#6A44B8");
+    private static final int TOR_DAY_BAR = Color.parseColor("#EFE9F8");
+    private static final int TOR_DAY_ACCENT = Color.parseColor("#5B3A9E");
+    private static final int TOR_DAY_RIM_START = Color.parseColor("#7A55C8");
+    private static final int TOR_DAY_RIM_END = Color.parseColor("#2E1A5C");
+    private static final float ICON_HIGH_SHIFT_DP = 0.6f;
+    private static final float ICON_LOW_SHIFT_DP = 0.7f;
+    private static final int RIM_DP = 2;
+    private static final int TILE_RADIUS_DP = 14;
+    private static final int THEME_BUTTON_DP = 40;
+    private static final int TOP_ROW_DP = 60;
+    private static final int PROGRESS_DP = 3;
+    private static final int BOTTOM_BAR_DP = 56;
+    private static final int BOX_HEIGHT_DP = 46;
+    private static final int BOX_RADIUS_DP = 12;
+    private static final int TAB_BUTTON_DP = 38;
+    private static final int PIN_BADGE_DP = 54;
+    private static final int PIN_COLUMNS = 4;
+    private static final int START_MAX_WIDTH_DP = 520;
+    private static final int SWITCHER_ROW_DP = 64;
+    private static final int SCROLL_SLOP_DP = 6;
+    private static final int MAX_LINK_LABEL = 80;
+    private static final int START_ANCHOR_DP = 100;
+    private static final int START_PAD_DP = 16;
+    private static final long EXPORT_POLL_MS = 150;
+    private static final long EXPORT_TIMEOUT_MS = 15000;
+    private static final Pattern STYLE_NAME = Pattern.compile("[^a-z]");
+    private static final long BAR_ANIM_MS = 180;
+    private static final long SCROLL_SETTLE_MS = 300;
+    private static final long KEYBOARD_DELAY_MS = 150;
+    private static final int PULL_SIZE_DP = 42;
+    private static final int PULL_TRIGGER_DP = 72;
+    private static final int PULL_MAX_DP = 110;
+    private static final int PULL_REST_DP = 14;
+    private static final float PULL_RESISTANCE = 0.55f;
+    private static final long PULL_RETURN_MS = 180;
+    private static final long PULL_SPIN_MS = 800;
+    private static final long PULL_TIMEOUT_MS = 10000;
+    private static final int MENU_TRACKERS = 3;
+    private static final int MENU_TOR = 6;
+    private static final int MENU_NEW_IDENTITY = 7;
+    private static final int MENU_SAFER = 8;
+    private static final int MENU_PIN = 10;
+    private static final int MENU_SETTINGS = 11;
+    private static final int MENU_FILL = 12;
+    private static final int MENU_ABOUT = 13;
+    private static final int FRAME_STROKE_DP = 2;
+    private static final String FONT_UI = "sans-serif";
+    private static final String FONT_MEDIUM = "sans-serif-medium";
+    private static final int TAB_EAR_DP = 9;
+    private static final int TAB_RADIUS_DP = 7;
+    private static final int REQUEST_STORAGE = 41;
+    private static final int REQUEST_FILL = 42;
+    private static final int REQUEST_SAVE = 43;
+    private static final int REQUEST_INFO = 44;
+    private static final long FILL_TOUCH_WINDOW_MS = 2000;
+    private static final long SAVE_PROMPT_DELAY_MS = 900;
+    private static final long SAVE_PENDING_MS = 60000;
+    private static final long SAVE_MUTE_MS = 60000;
+    private static final long TAP_MUTE_MS = 15000;
+    private static final long REPLY_WINDOW_MS = 10000;
+    private static final int MAX_KNOWN_LOGINS = 200;
+    private static final int MAX_COLLAPSE_URLS = 200;
+    private static final long COLLAPSE_DELAY_MS = 400;
+    private static final Map<String, String> GPC_HEADERS = Collections.singletonMap("Sec-GPC", "1");
+    private static final String HINT_NORMAL = "Search or enter address";
+    private static final String HINT_TOR = "Search with Tor";
+    private static final Pattern SCHEME = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*:.*");
+    private static final Pattern HOSTLIKE = Pattern.compile("^[^\\s/?#]+\\.[a-zA-Z]{2,}([/:?#].*)?$");
+    private static final String BLANK_REASON = "No Content";
+    private static boolean suffixSet = false;
+
+    private final SecureRandom seedSource = new SecureRandom();
+    private final BrowserTabs tabs = new BrowserTabs(seedSource::nextInt);
+    private final AtomicInteger sessionBlocked = new AtomicInteger(0);
+
+    private FrameLayout root;
+    private View statusScrim;
+    private View navScrim;
+    private LinearLayout topWrap;
+    private LinearLayout bottomBar;
+    private FrameLayout startView;
+    private WebView art;
+    private LinearLayout pinsBox;
+    private LinearLayout startColumn;
+    private View startBottomSpace;
+    private String dragUrl = null;
+    private int dropIndex = -1;
+    private boolean dropSelf = false;
+    private boolean dragActive = false;
+    private int exportCounter = 0;
+    private boolean exporting = false;
+    private TextView startInfo;
+    private FrameLayout switcher;
+    private LinearLayout switcherList;
+    private TextView switcherTitle;
+    private TextView switcherCloseAll;
+    private TextView switcherAdd;
+    private EditText address;
+    private ProgressBar progress;
+    private TextView tabButton;
+    private ImageButton themeButton;
+    private TextView saveLink;
+    private final Map<ImageButton, Integer> chromeIcons = new HashMap<>();
+    private boolean dayMode = true;
+    private ImageButton backButton;
+    private ImageButton forwardButton;
+    private ValueAnimator barAnimator;
+    private float barHidden = 0f;
+    private float marginState = 0f;
+    private long settleUntil = 0;
+    private int sideLeft = 0;
+    private int sideRight = 0;
+    private int statusInset = 0;
+    private int navInset = 0;
+    private int imeInset = 0;
+    private boolean artReady = false;
+    private Integer artPending = null;
+    private volatile Set<String> allowedSnapshot = Collections.emptySet();
+    private List<BrowserPins.Pin> pinsSnapshot = new ArrayList<>();
+    private String engine = BrowserSettings.ENGINE_STARTPAGE;
+    private boolean ready = false;
+    private Intent pendingIntent = null;
+    private boolean torMode = false;
+    private boolean safer = false;
+    private boolean switching = false;
+    private boolean rendererLost = false;
+    private Runnable pendingStorage = null;
+    private Runnable storageDenied = null;
+    private FrameLayout pullView;
+    private ImageView pullIcon;
+    private BrowserTab pullTab = null;
+    private float pullStartY = 0f;
+    private float lastTouchY = 0f;
+    private boolean touchDown = false;
+    private boolean pullReady = false;
+    private boolean refreshing = false;
+    private ObjectAnimator pullSpin = null;
+    private final Runnable pullTimeout = this::hidePull;
+    private final Set<String> knownLogins = new HashSet<>();
+    private final Map<String, Long> mutedSaves = new HashMap<>();
+    private final Map<String, Long> mutedTaps = new HashMap<>();
+    private int fillTabId = -1;
+    private String fillHost = null;
+    private String fillOrigin = null;
+    private List<String> fillFields = Collections.emptyList();
+    private JavaScriptReplyProxy fillProxy = null;
+    private int genMin = BrowserSettings.GEN_DEFAULT_MIN;
+    private int genMax = BrowserSettings.GEN_DEFAULT_MAX;
+    private boolean resumed = false;
+    private boolean fillTor = false;
+    private boolean torFillWarned = false;
+    private AlertDialog saveDialog = null;
+    private AlertDialog fillDialog = null;
+
+    private int dp(int value) {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics());
+    }
+
+    private float dpf(float value) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics());
+    }
+
+    private int bgColor() {
+        return dayMode ? DAY_BG : NIGHT_BG;
+    }
+
+    private int barColor() {
+        if (torMode) return dayMode ? TOR_DAY_BAR : TOR_NIGHT_BAR;
+        return dayMode ? DAY_BAR : NIGHT_BAR;
+    }
+
+    private int textColor() {
+        return dayMode ? DAY_TEXT : NIGHT_TEXT;
+    }
+
+    private int dimColor() {
+        return dayMode ? DAY_DIM : NIGHT_DIM;
+    }
+
+    private int faintColor() {
+        return dayMode ? DAY_FAINT : NIGHT_FAINT;
+    }
+
+    private int haloColor() {
+        return dayMode ? DAY_HALO : NIGHT_HALO;
+    }
+
+    private int accentColor() {
+        if (torMode) return dayMode ? TOR_DAY_ACCENT : TOR_NIGHT_ACCENT;
+        return dayMode ? DAY_INK : NIGHT_INK;
+    }
+
+    private int borderColor() {
+        return accentColor();
+    }
+
+    private int rimStart() {
+        if (torMode) return dayMode ? TOR_DAY_RIM_START : TOR_NIGHT_RIM_START;
+        return dayMode ? DAY_RIM_START : NIGHT_RIM_START;
+    }
+
+    private int rimEnd() {
+        if (torMode) return dayMode ? TOR_DAY_RIM_END : TOR_NIGHT_RIM_END;
+        return dayMode ? DAY_RIM_END : NIGHT_RIM_END;
+    }
+
+    private int bodyTop() {
+        return dayMode ? DAY_BODY_TOP : NIGHT_BODY_TOP;
+    }
+
+    private int bodyBottom() {
+        return dayMode ? DAY_BODY_BOTTOM : NIGHT_BODY_BOTTOM;
+    }
+
+    private int iconColor() {
+        return dayMode ? DAY_ICON : NIGHT_ICON;
+    }
+
+    private int iconHigh() {
+        return dayMode ? DAY_ICON_HIGH : NIGHT_ICON_HIGH;
+    }
+
+    private int iconLow() {
+        return dayMode ? DAY_ICON_LOW : NIGHT_ICON_LOW;
+    }
+
+    private GradientDrawable box(int fill, int radiusDp) {
+        return box(fill, radiusDp, borderColor());
+    }
+
+    private GradientDrawable rounded(int radiusPx, GradientDrawable.Orientation orientation, int... colors) {
+        GradientDrawable shape = colors.length == 1 ? new GradientDrawable() : new GradientDrawable(orientation, colors);
+        if (colors.length == 1) shape.setColor(colors[0]);
+        shape.setCornerRadius(radiusPx);
+        return shape;
+    }
+
+    private LayerDrawable bevel(int radiusDp, boolean pressed) {
+        int rim = dp(RIM_DP);
+        int radius = dp(radiusDp);
+        int inner = Math.max(0, radius - rim);
+        int shade = dayMode ? DAY_INNER : NIGHT_INNER;
+        int clear = Color.TRANSPARENT;
+        GradientDrawable drop = rounded(radius + dp(1), null, dayMode ? DAY_DROP : NIGHT_DROP);
+        GradientDrawable edge = rounded(radius, GradientDrawable.Orientation.TL_BR, rimStart(), rimEnd());
+        GradientDrawable body = pressed
+            ? rounded(inner, GradientDrawable.Orientation.TOP_BOTTOM, bodyBottom(), bodyTop())
+            : rounded(inner, GradientDrawable.Orientation.TOP_BOTTOM, bodyTop(), bodyBottom());
+        GradientDrawable sunk = pressed
+            ? rounded(inner, GradientDrawable.Orientation.TOP_BOTTOM, shade, shade, clear, clear)
+            : rounded(inner, GradientDrawable.Orientation.TOP_BOTTOM, shade, clear, clear, clear, clear);
+        LayerDrawable layers = new LayerDrawable(new android.graphics.drawable.Drawable[] { drop, edge, body, sunk });
+        layers.setLayerInset(0, dp(1), rim, dp(1), 0);
+        layers.setLayerInset(1, 0, 0, 0, rim);
+        layers.setLayerInset(2, rim, rim, rim, rim * 2);
+        layers.setLayerInset(3, rim, rim, rim, rim * 2);
+        return layers;
+    }
+
+    private LayerDrawable frame() {
+        return bevel(BOX_RADIUS_DP, false);
+    }
+
+    private BrowserTabIcon tabFrame() {
+        return new BrowserTabIcon(bodyTop(), bodyBottom(), rimStart(), rimEnd(), dayMode ? DAY_DROP : NIGHT_DROP, dp(FRAME_STROKE_DP), dp(TAB_RADIUS_DP), dp(TAB_EAR_DP), dpf(1.5f));
+    }
+
+    private BrowserEmboss emboss(int res) {
+        return new BrowserEmboss(this, res, iconColor(), iconHigh(), iconLow(), dpf(ICON_HIGH_SHIFT_DP), dpf(ICON_LOW_SHIFT_DP));
+    }
+
+    private void embossText(TextView view, int color) {
+        view.setTextColor(color);
+        view.setShadowLayer(0.01f, dpf(0.8f), dpf(0.8f), iconLow());
+    }
+
+    private void haloText(TextView view, int color) {
+        view.setTextColor(color);
+        view.setShadowLayer(dp(3), 0, 0, haloColor());
+    }
+
+    private AlertDialog.Builder dialog() {
+        return new AlertDialog.Builder(this, dayMode ? android.R.style.Theme_Material_Light_Dialog_Alert : android.R.style.Theme_Material_Dialog_Alert);
+    }
+
+    private android.content.Context menuContext() {
+        return new android.view.ContextThemeWrapper(this, dayMode ? android.R.style.Theme_Material_Light : android.R.style.Theme_Material);
+    }
+
+    private GradientDrawable box(int fill, int radiusDp, int stroke) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(fill);
+        shape.setStroke(dp(1), stroke);
+        shape.setCornerRadius(dp(radiusDp));
+        return shape;
+    }
+
+    private ImageButton iconButton(int icon, String label, View.OnClickListener onClick) {
+        ImageButton b = new ImageButton(this);
+        b.setImageDrawable(emboss(icon));
+        b.setContentDescription(label);
+        b.setScaleType(ImageView.ScaleType.CENTER);
+        b.setBackground(ripple());
+        if (onClick != null) b.setOnClickListener(onClick);
+        return b;
+    }
+
+    private ImageButton chromeButton(int icon, String label, View.OnClickListener onClick) {
+        ImageButton b = iconButton(icon, label, onClick);
+        chromeIcons.put(b, icon);
+        return b;
+    }
+
+    private RippleDrawable ripple() {
+        return new RippleDrawable(ColorStateList.valueOf(dayMode ? Color.argb(40, 29, 30, 33) : Color.argb(50, 230, 233, 237)), null, null);
+    }
+
+    private TextView label(String text, int sp, int color, boolean bold) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextColor(color);
+        view.setTypeface(Typeface.create(bold ? FONT_MEDIUM : FONT_UI, Typeface.NORMAL));
+        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+        return view;
+    }
+
+    private static String engineName(String value) {
+        if (BrowserSettings.ENGINE_DUCKDUCKGO.equals(value)) return "DuckDuckGo";
+        if (BrowserSettings.ENGINE_BRAVE.equals(value)) return "Brave Search";
+        return "Startpage";
+    }
+
+    private void loadSettings() {
+        BrowserSettings settings = BrowserSettings.load(this);
+        boolean wasDay = dayMode;
+        dayMode = !BrowserSettings.THEME_NIGHT.equals(settings.theme);
+        engine = settings.engine;
+        genMin = settings.genMin;
+        genMax = settings.genMax;
+        allowedSnapshot = Collections.unmodifiableSet(new HashSet<>(settings.allowedSites));
+        pinsSnapshot = new ArrayList<>(settings.pins);
+        if (wasDay != dayMode && switcher != null) applyTheme();
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        if (!supported()) {
+            super.onCreate(savedInstanceState);
+            Toast.makeText(this, "The private browser needs Android 9 or newer", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        build(savedInstanceState);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    private void build(Bundle savedInstanceState) {
+        if (!suffixSet) {
+            try {
+                WebView.setDataDirectorySuffix(DATA_SUFFIX);
+                suffixSet = true;
+            } catch (Exception e) {
+                suffixSet = false;
+            }
+        }
+        super.onCreate(savedInstanceState);
+        if (!suffixSet) {
+            Toast.makeText(this, "The private browser could not start", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        loadSettings();
+        setTaskDescription(new ActivityManager.TaskDescription(TASK_LABEL, R.drawable.vv_logo, barColor()));
+        goEdgeToEdge();
+        BrowserPrivacy.loadList(this);
+
+        root = new FrameLayout(this);
+        root.setBackgroundColor(bgColor());
+        root.setFocusableInTouchMode(true);
+
+        startView = buildStart();
+        root.addView(startView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        pullView = buildPull();
+        root.addView(pullView, new FrameLayout.LayoutParams(dp(PULL_SIZE_DP), dp(PULL_SIZE_DP), Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+
+        topWrap = buildTopBar();
+        root.addView(topWrap, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(TOP_ROW_DP + PROGRESS_DP), Gravity.TOP));
+
+        bottomBar = buildBottomBar();
+        root.addView(bottomBar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(BOTTOM_BAR_DP), Gravity.BOTTOM));
+
+        statusScrim = new View(this);
+        statusScrim.setBackgroundColor(barColor());
+        root.addView(statusScrim, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.TOP));
+
+        navScrim = new View(this);
+        navScrim.setBackgroundColor(barColor());
+        root.addView(navScrim, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM));
+
+        switcher = buildSwitcher();
+        root.addView(switcher, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            readInsets(insets);
+            root.setPadding(sideLeft, 0, sideRight, 0);
+            layoutChrome();
+            return consumed(insets);
+        });
+
+        setContentView(root);
+        applySystemBars();
+        root.requestFocus();
+        root.requestApplyInsets();
+        updateBar();
+        pendingIntent = getIntent();
+        Runnable start = () -> {
+            if (isDestroyed()) return;
+            wipe(art, this::becomeReady);
+        };
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
+            try {
+                ProxyController.getInstance().clearProxyOverride(getMainExecutor(), start);
+            } catch (Exception e) {
+                start.run();
+            }
+        } else {
+            start.run();
+        }
+    }
+
+    private void becomeReady() {
+        if (isDestroyed() || rendererLost) return;
+        ready = true;
+        if (tabs.size() == 0) newTab(false);
+        Intent intent = pendingIntent;
+        pendingIntent = null;
+        if (intent != null) handleIntent(intent);
+    }
+
+    private void endSwitch() {
+        switching = false;
+        Intent intent = pendingIntent;
+        pendingIntent = null;
+        if (intent != null) handleIntent(intent);
+    }
+
+    @SuppressWarnings("deprecation")
+    private void goEdgeToEdge() {
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(false);
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private WindowInsets consumed(WindowInsets insets) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.CONSUMED;
+        return insets.consumeSystemWindowInsets();
+    }
+
+    @SuppressWarnings("deprecation")
+    private void readInsets(WindowInsets insets) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+            statusInset = bars.top;
+            navInset = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
+            sideLeft = bars.left;
+            sideRight = bars.right;
+            imeInset = insets.isVisible(WindowInsets.Type.ime()) ? insets.getInsets(WindowInsets.Type.ime()).bottom : 0;
+        } else {
+            statusInset = insets.getSystemWindowInsetTop();
+            navInset = insets.getStableInsetBottom();
+            sideLeft = insets.getSystemWindowInsetLeft();
+            sideRight = insets.getSystemWindowInsetRight();
+            int bottom = insets.getSystemWindowInsetBottom();
+            imeInset = bottom > navInset ? bottom : 0;
+        }
+    }
+
+    private boolean keyboardUp() {
+        return imeInset > 0;
+    }
+
+    private BrowserTab activeTab() {
+        return tabs.active();
+    }
+
+    private WebView activeWeb() {
+        BrowserTab tab = tabs.active();
+        return tab == null ? null : tab.web;
+    }
+
+    private boolean startShowing() {
+        BrowserTab tab = tabs.active();
+        return tab == null || tab.start;
+    }
+
+    private boolean switcherOpen() {
+        return switcher != null && switcher.getVisibility() == View.VISIBLE;
+    }
+
+    private void layoutChrome() {
+        if (root == null || topWrap == null) return;
+        int topH = dp(TOP_ROW_DP + PROGRESS_DP);
+        int bottomH = dp(BOTTOM_BAR_DP);
+        boolean keyboard = keyboardUp();
+
+        FrameLayout.LayoutParams scrim = (FrameLayout.LayoutParams) statusScrim.getLayoutParams();
+        scrim.height = statusInset;
+        statusScrim.setLayoutParams(scrim);
+
+        FrameLayout.LayoutParams nav = (FrameLayout.LayoutParams) navScrim.getLayoutParams();
+        nav.height = keyboard ? 0 : navInset;
+        navScrim.setLayoutParams(nav);
+
+        FrameLayout.LayoutParams top = (FrameLayout.LayoutParams) topWrap.getLayoutParams();
+        top.topMargin = statusInset;
+        topWrap.setLayoutParams(top);
+        topWrap.setTranslationY(-topH * barHidden);
+
+        FrameLayout.LayoutParams bottom = (FrameLayout.LayoutParams) bottomBar.getLayoutParams();
+        bottom.bottomMargin = navInset;
+        bottomBar.setLayoutParams(bottom);
+        bottomBar.setVisibility(keyboard ? View.GONE : View.VISIBLE);
+        bottomBar.setTranslationY(bottomH * barHidden);
+
+        int pageTop = statusInset + Math.round(topH * (1f - marginState));
+        int pageBottom = keyboard ? imeInset : navInset + Math.round(bottomH * (1f - marginState));
+        float pageShift = keyboard ? 0f : topH * (marginState - barHidden);
+        for (BrowserTab tab : tabs.list()) {
+            if (tab.web == null) continue;
+            FrameLayout.LayoutParams page = (FrameLayout.LayoutParams) tab.web.getLayoutParams();
+            if (page.topMargin != pageTop || page.bottomMargin != pageBottom) {
+                page.topMargin = pageTop;
+                page.bottomMargin = pageBottom;
+                tab.web.setLayoutParams(page);
+            }
+            tab.web.setTranslationY(pageShift);
+        }
+
+        FrameLayout.LayoutParams startParams = (FrameLayout.LayoutParams) startView.getLayoutParams();
+        int startTop = statusInset + topH;
+        int startBottom = navInset + bottomH;
+        if (startParams.topMargin != startTop || startParams.bottomMargin != startBottom) {
+            startParams.topMargin = startTop;
+            startParams.bottomMargin = startBottom;
+            startView.setLayoutParams(startParams);
+        }
+
+        switcher.setPadding(0, statusInset, 0, navInset);
+    }
+
+    private void animateBars(float target) {
+        if (barAnimator != null) barAnimator.cancel();
+        if (Math.abs(barHidden - target) < 0.001f && Math.abs(marginState - target) < 0.001f) return;
+        marginState = 0f;
+        barAnimator = ValueAnimator.ofFloat(barHidden, target);
+        barAnimator.setDuration(BAR_ANIM_MS);
+        barAnimator.addUpdateListener(a -> {
+            barHidden = (float) a.getAnimatedValue();
+            if (a.getAnimatedFraction() >= 1f) {
+                marginState = target;
+                settleUntil = SystemClock.uptimeMillis() + SCROLL_SETTLE_MS;
+            }
+            layoutChrome();
+        });
+        layoutChrome();
+        barAnimator.start();
+    }
+
+    private void showBars() {
+        animateBars(0f);
+    }
+
+    private void hideBars() {
+        if (startShowing() || keyboardUp() || address.hasFocus() || switcherOpen()) return;
+        animateBars(1f);
+    }
+
+    private boolean barsMoving() {
+        return barAnimator != null && barAnimator.isRunning();
+    }
+
+    private LinearLayout buildTopBar() {
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        wrap.setBackgroundColor(barColor());
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(8), dp(7), dp(2), dp(7));
+
+        address = new EditText(this);
+        address.setSingleLine(true);
+        address.setHint(HINT_NORMAL);
+        address.setHintTextColor(dimColor());
+        address.setTextColor(textColor());
+        address.setTypeface(Typeface.create(FONT_UI, Typeface.NORMAL));
+        address.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        address.setSelectAllOnFocus(true);
+        address.setGravity(Gravity.CENTER_VERTICAL);
+        address.setImeOptions(EditorInfo.IME_ACTION_GO);
+        address.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        address.setPadding(dp(14), 0, dp(14), dp(RIM_DP));
+        address.setBackground(frame());
+        address.setOnEditorActionListener((v, actionId, event) -> {
+            boolean enter = event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN;
+            if (actionId == EditorInfo.IME_ACTION_GO || enter) {
+                open(address.getText().toString());
+                hideKeyboard();
+                return true;
+            }
+            return false;
+        });
+        address.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) showBars();
+            else showAddressOf(activeTab());
+        });
+        row.addView(address, new LinearLayout.LayoutParams(0, dp(BOX_HEIGHT_DP), 1f));
+
+        themeButton = new ImageButton(this);
+        themeButton.setScaleType(ImageView.ScaleType.CENTER);
+        themeButton.setBackground(ripple());
+        themeButton.setOnClickListener(v -> toggleDayNight());
+        updateThemeButton();
+        LinearLayout.LayoutParams themeParams = new LinearLayout.LayoutParams(dp(THEME_BUTTON_DP), dp(BOX_HEIGHT_DP));
+        themeParams.setMargins(dp(4), 0, 0, 0);
+        row.addView(themeButton, themeParams);
+
+        tabButton = new TextView(this);
+        embossText(tabButton, accentColor());
+        tabButton.setTypeface(Typeface.create(FONT_MEDIUM, Typeface.NORMAL));
+        tabButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        tabButton.setGravity(Gravity.CENTER);
+        tabButton.setBackground(tabFrame());
+        tabButton.setContentDescription("Tabs");
+        tabButton.setOnClickListener(v -> {
+            if (switcherOpen()) closeSwitcher();
+            else openSwitcher();
+        });
+        tabButton.setOnLongClickListener(v -> {
+            newTab(false);
+            return true;
+        });
+        LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(dp(TAB_BUTTON_DP), dp(TAB_BUTTON_DP));
+        tabParams.setMargins(dp(4), 0, dp(2), 0);
+        row.addView(tabButton, tabParams);
+
+        ImageButton more = chromeButton(R.drawable.vv_ic_more, "Menu", null);
+        more.setOnClickListener(v -> showMenu(more));
+        row.addView(more, new LinearLayout.LayoutParams(dp(40), dp(BOX_HEIGHT_DP)));
+
+        wrap.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(TOP_ROW_DP)));
+
+        progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progress.setMax(100);
+        progress.setProgressTintList(ColorStateList.valueOf(accentColor()));
+        progress.setVisibility(View.INVISIBLE);
+        wrap.addView(progress, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(PROGRESS_DP)));
+        return wrap;
+    }
+
+    private LinearLayout buildBottomBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setBackgroundColor(barColor());
+        backButton = chromeButton(R.drawable.vv_ic_back, "Back", v -> backButtonPressed());
+        forwardButton = chromeButton(R.drawable.vv_ic_forward, "Forward", v -> goForward());
+        ImageButton newTabButton = chromeButton(R.drawable.vv_ic_add, "New tab", v -> newTab(false));
+        ImageButton bookmarks = chromeButton(R.drawable.vv_ic_bookmark, "Bookmarks", v -> openVault(LaunchTarget.TAB_BOOKMARKS, "Bookmarks"));
+        ImageButton share = chromeButton(R.drawable.vv_ic_share, "Share", v -> sharePage());
+        for (ImageButton b : new ImageButton[] { backButton, bookmarks, newTabButton, share, forwardButton }) {
+            bar.addView(b, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        }
+        return bar;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    private FrameLayout buildStart() {
+        FrameLayout frame = new FrameLayout(this);
+        frame.setBackgroundColor(bgColor());
+
+        art = new WebView(this);
+        art.setBackgroundColor(bgColor());
+        art.setFocusable(false);
+        art.setVerticalScrollBarEnabled(false);
+        art.setHorizontalScrollBarEnabled(false);
+        configureArt(art);
+        frame.addView(art, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
+
+        LinearLayout outer = new LinearLayout(this);
+        outer.setOrientation(LinearLayout.VERTICAL);
+        outer.setGravity(Gravity.CENTER_HORIZONTAL);
+        outer.setPadding(dp(START_PAD_DP), dp(START_PAD_DP), dp(START_PAD_DP), 0);
+        outer.addView(new View(this), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setGravity(Gravity.CENTER_HORIZONTAL);
+        startColumn = column;
+
+        pinsBox = new LinearLayout(this);
+        pinsBox.setOrientation(LinearLayout.VERTICAL);
+        column.addView(pinsBox, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        startInfo = label("", 12, dimColor(), false);
+        startInfo.setGravity(Gravity.CENTER);
+        haloText(startInfo, textColor());
+        LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        infoParams.gravity = Gravity.CENTER_HORIZONTAL;
+        infoParams.setMargins(0, dp(18), 0, 0);
+        column.addView(startInfo, infoParams);
+
+        TextView save = label("Like this background? Save it to Downloads", 12, textColor(), false);
+        saveLink = save;
+        save.setGravity(Gravity.CENTER);
+        save.setPaintFlags(save.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        haloText(save, textColor());
+        save.setPadding(dp(8), dp(8), dp(8), dp(8));
+        save.setClickable(true);
+        save.setOnClickListener(v -> saveBackground());
+        LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        saveParams.gravity = Gravity.CENTER_HORIZONTAL;
+        saveParams.setMargins(0, dp(4), 0, 0);
+        column.addView(save, saveParams);
+
+        outer.addView(column, new LinearLayout.LayoutParams(startWidth(), ViewGroup.LayoutParams.WRAP_CONTENT));
+        startBottomSpace = new View(this);
+        outer.addView(startBottomSpace, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(START_PAD_DP)));
+        scroll.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            int space = Math.max(dp(START_PAD_DP), (bottom - top) / 2 - dp(START_ANCHOR_DP));
+            ViewGroup.LayoutParams params = startBottomSpace.getLayoutParams();
+            if (params.height != space) {
+                params.height = space;
+                startBottomSpace.post(() -> startBottomSpace.setLayoutParams(params));
+            }
+        });
+        scroll.addView(outer, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        frame.addView(scroll, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        frame.setVisibility(View.INVISIBLE);
+        String html = BrowserScripts.startHtml(this);
+        if (html != null) art.loadDataWithBaseURL(BrowserScripts.START_BASE_URL, html, "text/html", "utf-8", null);
+        return frame;
+    }
+
+    private int startWidth() {
+        return Math.max(dp(200), Math.min(getResources().getDisplayMetrics().widthPixels - dp(32), dp(START_MAX_WIDTH_DP)));
+    }
+
+    private void renderPins() {
+        if (pinsBox == null || dragActive) return;
+        pinsBox.removeAllViews();
+        boolean canAdd = !torMode && pinsSnapshot.size() < BrowserPins.MAX_PINS;
+        int count = pinsSnapshot.size() + (canAdd ? 1 : 0);
+        LinearLayout row = null;
+        for (int i = 0; i < count; i++) {
+            if (i % PIN_COLUMNS == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                rowParams.setMargins(0, i == 0 ? 0 : dp(12), 0, 0);
+                pinsBox.addView(row, rowParams);
+            }
+            View tile = i < pinsSnapshot.size() ? pinTile(pinsSnapshot.get(i), i) : addTile();
+            row.addView(tile, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        }
+        int filler = (PIN_COLUMNS - count % PIN_COLUMNS) % PIN_COLUMNS;
+        for (int i = 0; i < filler && row != null; i++) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+    }
+
+    private LinearLayout tileFrame(String letter, String text, int letterColor) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER_HORIZONTAL);
+        tile.setClickable(true);
+        tile.setContentDescription(text);
+        TextView badge = label(letter, 22, letterColor, true);
+        badge.setGravity(Gravity.CENTER);
+        badge.setPadding(0, 0, 0, dp(RIM_DP));
+        embossText(badge, letterColor);
+        badge.setBackground(bevel(TILE_RADIUS_DP, false));
+        tile.addView(badge, new LinearLayout.LayoutParams(dp(PIN_BADGE_DP), dp(PIN_BADGE_DP)));
+        TextView name = label(text, 11, textColor(), false);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setGravity(Gravity.CENTER);
+        haloText(name, textColor());
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        nameParams.setMargins(dp(2), dp(5), dp(2), 0);
+        tile.addView(name, nameParams);
+        return tile;
+    }
+
+    private View addTile() {
+        LinearLayout tile = tileFrame("+", "Add site", dimColor());
+        tile.setOnClickListener(v -> showAddSite());
+        return tile;
+    }
+
+    private View pinTile(BrowserPins.Pin pin, int index) {
+        LinearLayout tile = tileFrame(BrowserPins.letter(pin), BrowserPins.label(pin), iconColor());
+        View badge = tile.getChildAt(0);
+        tile.setOnClickListener(v -> openPin(pin));
+        tile.setOnLongClickListener(v -> {
+            dragUrl = pin.url;
+            dropIndex = -1;
+            dropSelf = false;
+            dragActive = true;
+            v.setAlpha(0.45f);
+            if (!v.startDragAndDrop(null, new View.DragShadowBuilder(v), pin.url, 0)) {
+                dragActive = false;
+                v.setAlpha(1f);
+                pinMenu(pin);
+            }
+            return true;
+        });
+        tile.setOnDragListener((v, event) -> {
+            boolean self = pin.url.equals(dragUrl);
+            switch (event.getAction()) {
+                case DragEvent.ACTION_DRAG_STARTED:
+                    return dragActive;
+                case DragEvent.ACTION_DRAG_ENTERED:
+                    if (!self) badge.setBackground(bevel(TILE_RADIUS_DP, true));
+                    return true;
+                case DragEvent.ACTION_DRAG_EXITED:
+                    badge.setBackground(bevel(TILE_RADIUS_DP, false));
+                    return true;
+                case DragEvent.ACTION_DROP:
+                    badge.setBackground(bevel(TILE_RADIUS_DP, false));
+                    if (self) dropSelf = true;
+                    else dropIndex = index;
+                    return true;
+                case DragEvent.ACTION_DRAG_ENDED:
+                    badge.setBackground(bevel(TILE_RADIUS_DP, false));
+                    v.setAlpha(1f);
+                    if (self) finishDrag(pin);
+                    return true;
+                default:
+                    return true;
+            }
+        });
+        return tile;
+    }
+
+    private void finishDrag(BrowserPins.Pin pin) {
+        if (!dragActive) return;
+        dragActive = false;
+        String url = dragUrl;
+        int to = dropIndex;
+        boolean menu = dropSelf;
+        dragUrl = null;
+        dropIndex = -1;
+        dropSelf = false;
+        root.post(() -> {
+            if (isDestroyed()) return;
+            if (to >= 0) movePin(url, to);
+            else if (menu) pinMenu(pin);
+            else renderPins();
+        });
+    }
+
+    private void movePin(String url, int to) {
+        BrowserSettings saved = BrowserSettings.update(this, settings -> BrowserPins.move(settings.pins, url, to));
+        if (saved == null) {
+            toast("Could not save the change");
+            return;
+        }
+        loadSettings();
+        renderPins();
+    }
+
+    private LinearLayout siteForm(EditText name, EditText site) {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(20), dp(8), dp(20), 0);
+        name.setHint("Name");
+        name.setSingleLine(true);
+        name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        form.addView(name);
+        site.setHint("Address, like example.com");
+        site.setSingleLine(true);
+        site.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        form.addView(site);
+        return form;
+    }
+
+    private void showEditSite(BrowserPins.Pin pin) {
+        if (isFinishing() || torMode) return;
+        android.content.Context themed = menuContext();
+        EditText name = new EditText(themed);
+        EditText site = new EditText(themed);
+        LinearLayout form = siteForm(name, site);
+        name.setText(pin.title.isEmpty() ? BrowserPins.hostLabel(pin.url) : pin.title);
+        site.setText(pin.url);
+        dialog()
+            .setTitle("Edit site")
+            .setView(form)
+            .setPositiveButton("Save", (d, w) -> {
+                String url = BrowserPins.fromInput(site.getText().toString());
+                if (url == null) {
+                    toast("Enter a web address, like example.com");
+                    return;
+                }
+                editPin(pin.url, url, name.getText().toString());
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void editPin(String oldUrl, String newUrl, String title) {
+        int[] result = { BrowserPins.EDIT_MISSING };
+        BrowserSettings saved = BrowserSettings.update(this, settings -> result[0] = BrowserPins.edit(settings.pins, oldUrl, newUrl, title));
+        if (saved == null) {
+            toast("Could not save the change");
+            return;
+        }
+        loadSettings();
+        renderPins();
+        if (result[0] == BrowserPins.EDIT_DUPLICATE) toast("That site is already in new tab quick view");
+        else if (result[0] == BrowserPins.EDIT_INVALID) toast("Enter a web address, like example.com");
+        else if (result[0] == BrowserPins.EDIT_MISSING) toast("That site was already removed");
+        else if (result[0] == BrowserPins.EDIT_SAVED) toast("Saved");
+    }
+
+    private void showAddSite() {
+        if (isFinishing() || torMode) return;
+        android.content.Context themed = menuContext();
+        EditText name = new EditText(themed);
+        EditText site = new EditText(themed);
+        LinearLayout form = siteForm(name, site);
+        dialog()
+            .setTitle("Add a site to new tab quick view")
+            .setView(form)
+            .setPositiveButton("Add", (d, w) -> {
+                String url = BrowserPins.fromInput(site.getText().toString());
+                if (url == null) {
+                    toast("Enter a web address, like example.com");
+                    return;
+                }
+                if (BrowserPins.contains(pinsSnapshot, url)) {
+                    toast("That site is already in new tab quick view");
+                    return;
+                }
+                setPinned(url, name.getText().toString(), true);
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void saveBackground() {
+        BrowserTab tab = activeTab();
+        if (tab == null || art == null || !artReady || exporting) return;
+        exporting = true;
+        int id = ++exportCounter;
+        int seed = tab.seed;
+        art.evaluateJavascript(BrowserScripts.exportStart(id), null);
+        pollExport(id, seed, SystemClock.uptimeMillis() + EXPORT_TIMEOUT_MS);
+    }
+
+    private void pollExport(int id, int seed, long deadline) {
+        if (art == null || isDestroyed()) {
+            exporting = false;
+            return;
+        }
+        art.evaluateJavascript(BrowserScripts.takeExport(id), value -> {
+            if (value == null || value.equals("null")) {
+                if (SystemClock.uptimeMillis() < deadline && root != null) root.postDelayed(() -> pollExport(id, seed, deadline), EXPORT_POLL_MS);
+                else {
+                    exporting = false;
+                    toast("Could not save the background");
+                }
+                return;
+            }
+            withStorage(() -> {
+                Thread writer = new Thread(() -> {
+                    String saved = null;
+                    try {
+                        JSONObject result = new JSONObject(value);
+                        if (!result.optBoolean("error", false)) {
+                            String style = STYLE_NAME.matcher(result.optString("style", "").toLowerCase(Locale.ROOT)).replaceAll("");
+                            String name = "valid-vault-" + (style.isEmpty() ? "background" : style) + "-" + Integer.toHexString(seed) + ".png";
+                            if (BrowserDownloads.saveImage(getApplicationContext(), name, Base64.decode(result.getString("data"), Base64.DEFAULT))) saved = name;
+                        }
+                    } catch (Throwable e) {
+                        saved = null;
+                    }
+                    String name = saved;
+                    runOnUiThread(() -> {
+                        exporting = false;
+                        if (isDestroyed()) return;
+                        toast(name != null ? "Saved " + name + " to Downloads" : "Could not save the background");
+                    });
+                });
+                writer.start();
+            }, () -> exporting = false);
+        });
+    }
+
+    private void openPin(BrowserPins.Pin pin) {
+        BrowserTab tab = activeTab();
+        if (tab == null || switching || !ready) return;
+        loadInTab(tab, pin.url);
+    }
+
+    private void pinMenu(BrowserPins.Pin pin) {
+        if (isFinishing()) return;
+        dialog()
+            .setTitle(BrowserPins.label(pin))
+            .setItems(new CharSequence[] { "Edit", "Open in new tab", "Remove from new tab quick view" }, (d, which) -> {
+                if (which == 0) showEditSite(pin);
+                else if (which == 1) openInNewTab(pin.url, true);
+                else setPinned(pin.url, "", false);
+            })
+            .show();
+    }
+
+    private void setPinned(String url, String title, boolean pin) {
+        boolean[] changed = { false };
+        boolean[] full = { false };
+        BrowserSettings saved = BrowserSettings.update(this, settings -> {
+            if (pin) {
+                full[0] = settings.pins.size() >= BrowserPins.MAX_PINS;
+                changed[0] = BrowserPins.add(settings.pins, url, title);
+            } else {
+                changed[0] = BrowserPins.remove(settings.pins, url);
+            }
+        });
+        if (saved == null) {
+            toast("Could not save the change");
+            return;
+        }
+        loadSettings();
+        renderPins();
+        if (pin && full[0]) toast("New tab quick view holds " + BrowserPins.MAX_PINS + " sites. Remove one first.");
+        else if (changed[0]) toast(pin ? "Added to the bottom of new tab quick view" : "Removed from new tab quick view");
+    }
+
+    private void updateStartInfo() {
+        if (startInfo == null) return;
+        int count = sessionBlocked.get();
+        String mode = torMode ? (safer ? "Tor, Safer  ·  " : "Tor  ·  ") : "";
+        startInfo.setText(mode + engineName(engine) + "  ·  " + count + (count == 1 ? " tracker" : " trackers") + " blocked this session");
+    }
+
+    private FrameLayout buildSwitcher() {
+        FrameLayout frame = new FrameLayout(this);
+        frame.setBackgroundColor(bgColor());
+        frame.setClickable(true);
+        frame.setVisibility(View.GONE);
+
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(16), dp(10), dp(8), dp(10));
+        switcherTitle = label("Tabs", 17, textColor(), true);
+        header.addView(switcherTitle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView closeAll = label("Close all", 14, dimColor(), false);
+        switcherCloseAll = closeAll;
+        closeAll.setPadding(dp(10), dp(10), dp(10), dp(10));
+        closeAll.setOnClickListener(v -> confirmCloseAll());
+        header.addView(closeAll);
+        TextView add = label("New tab", 14, textColor(), true);
+        switcherAdd = add;
+        add.setPadding(dp(10), dp(10), dp(10), dp(10));
+        add.setOnClickListener(v -> newTab(false));
+        header.addView(add);
+        column.addView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        ScrollView scroll = new ScrollView(this);
+        switcherList = new LinearLayout(this);
+        switcherList.setOrientation(LinearLayout.VERTICAL);
+        switcherList.setPadding(dp(12), dp(4), dp(12), dp(16));
+        scroll.addView(switcherList, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        column.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        frame.addView(column, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        return frame;
+    }
+
+    private String tabTitle(BrowserTab tab) {
+        if (tab.start || !hasPage(tab)) return "New tab";
+        if (tab.title != null && !tab.title.trim().isEmpty()) return tab.title.trim();
+        return BrowserPins.hostLabel(tab.url);
+    }
+
+    private String tabSubtitle(BrowserTab tab) {
+        if (tab.start || !hasPage(tab)) return "Start page";
+        return BrowserPins.hostLabel(tab.url);
+    }
+
+    private void renderSwitcher() {
+        if (switcherList == null) return;
+        switcherList.removeAllViews();
+        int count = tabs.size();
+        switcherTitle.setText(count + (count == 1 ? " tab" : " tabs") + (torMode ? "  ·  Tor" : ""));
+        BrowserTab current = activeTab();
+        List<BrowserTab> list = new ArrayList<>(tabs.list());
+        for (BrowserTab tab : list) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(14), 0, dp(4), 0);
+            boolean isActive = tab == current;
+            row.setBackground(isActive ? bevel(BOX_RADIUS_DP, false) : box(barColor(), BOX_RADIUS_DP, faintColor()));
+            row.setClickable(true);
+            row.setOnClickListener(v -> {
+                selectTab(tab);
+                closeSwitcher();
+            });
+
+            LinearLayout text = new LinearLayout(this);
+            text.setOrientation(LinearLayout.VERTICAL);
+            TextView title = label(tabTitle(tab), 14, textColor(), isActive);
+            title.setSingleLine(true);
+            title.setEllipsize(TextUtils.TruncateAt.END);
+            text.addView(title);
+            TextView sub = label(tabSubtitle(tab), 12, dimColor(), false);
+            sub.setSingleLine(true);
+            sub.setEllipsize(TextUtils.TruncateAt.END);
+            text.addView(sub);
+            row.addView(text, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+            ImageButton close = iconButton(R.drawable.vv_ic_close, "Close tab", v -> {
+                closeTab(tab);
+                if (switcherOpen()) renderSwitcher();
+            });
+            row.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
+
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(SWITCHER_ROW_DP));
+            rowParams.setMargins(0, dp(8), 0, 0);
+            switcherList.addView(row, rowParams);
+        }
+    }
+
+    private void openSwitcher() {
+        if (!ready || switching) return;
+        hideKeyboard();
+        renderSwitcher();
+        switcher.setVisibility(View.VISIBLE);
+        switcher.bringToFront();
+    }
+
+    private void closeSwitcher() {
+        if (switcher != null) switcher.setVisibility(View.GONE);
+    }
+
+    private void confirmCloseAll() {
+        if (isFinishing()) return;
+        dialog()
+            .setTitle("Close all tabs?")
+            .setMessage("Every open tab closes and a new start page opens.")
+            .setPositiveButton("Close all", (d, w) -> {
+                closeAllTabs();
+                closeSwitcher();
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    private void configureArt(WebView view) {
+        WebSettings s = view.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setBlockNetworkLoads(true);
+        s.setDomStorageEnabled(false);
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
+        s.setGeolocationEnabled(false);
+        s.setSupportMultipleWindows(false);
+        s.setJavaScriptCanOpenWindowsAutomatically(false);
+        s.setSafeBrowsingEnabled(false);
+        s.setSupportZoom(false);
+        view.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
+                return true;
+            }
+
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest request) {
+                String scheme = request.getUrl().getScheme() == null ? "" : request.getUrl().getScheme().toLowerCase(Locale.ROOT);
+                if (scheme.equals("blob") || scheme.equals("data")) return null;
+                return new WebResourceResponse("text/plain", "utf-8", 204, BLANK_REASON, Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));
+            }
+
+            @Override
+            public void onPageFinished(WebView v, String url) {
+                if (v != art) return;
+                artReady = true;
+                Integer seed = artPending;
+                artPending = null;
+                if (seed != null) paintArt(seed);
+            }
+
+            @Override
+            public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail detail) {
+                rendererGone();
+                return true;
+            }
+        });
+        view.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                callback.invoke(origin, false, false);
+            }
+
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                request.deny();
+            }
+        });
+    }
+
+    private void paintArt(int seed) {
+        if (art == null) return;
+        if (!artReady) {
+            artPending = seed;
+            return;
+        }
+        art.evaluateJavascript(BrowserScripts.paint(seed, dayMode), null);
+    }
+
+    private FrameLayout buildPull() {
+        FrameLayout circle = new FrameLayout(this);
+        GradientDrawable shape = new GradientDrawable();
+        shape.setShape(GradientDrawable.OVAL);
+        shape.setColor(barColor());
+        shape.setStroke(dp(1), borderColor());
+        circle.setBackground(shape);
+        circle.setVisibility(View.GONE);
+        circle.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        pullIcon = new ImageView(this);
+        pullIcon.setImageDrawable(emboss(R.drawable.vv_ic_refresh));
+        pullIcon.setScaleType(ImageView.ScaleType.CENTER);
+        circle.addView(pullIcon, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        return circle;
+    }
+
+    private float barBottom() {
+        return statusInset + dp(TOP_ROW_DP + PROGRESS_DP) * (1f - barHidden);
+    }
+
+    private void onTopOverscroll(BrowserTab tab, WebView view) {
+        if (!touchDown || pullTab != null || refreshing || switching || view != tab.web || tab != activeTab() || tab.start || !hasPage(tab)) return;
+        if (switcherOpen() || (address != null && address.hasFocus())) return;
+        pullTab = tab;
+        pullStartY = lastTouchY;
+        pullReady = false;
+        GradientDrawable shape = (GradientDrawable) pullView.getBackground();
+        shape.setColor(barColor());
+        shape.setStroke(dp(1), borderColor());
+        pullIcon.setImageDrawable(emboss(R.drawable.vv_ic_refresh));
+        pullView.animate().cancel();
+        pullView.setVisibility(View.VISIBLE);
+        drawPull(0f);
+    }
+
+    private void drawPull(float distance) {
+        float max = dp(PULL_MAX_DP);
+        float trigger = dp(PULL_TRIGGER_DP);
+        float offset = Math.min(max, distance * PULL_RESISTANCE);
+        float progress = Math.min(1f, offset / (trigger * PULL_RESISTANCE));
+        pullReady = offset >= trigger * PULL_RESISTANCE;
+        pullView.setTranslationY(barBottom() - dp(PULL_SIZE_DP) + offset);
+        pullView.setAlpha(0.35f + 0.65f * progress);
+        float scale = pullReady ? 1f : 0.8f + 0.15f * progress;
+        pullView.setScaleX(scale);
+        pullView.setScaleY(scale);
+        pullIcon.setRotation(progress * 300f);
+    }
+
+    private void movePull(BrowserTab tab, float y) {
+        if (pullTab != tab || refreshing) return;
+        float distance = y - pullStartY;
+        if (distance < 0f) {
+            cancelPull();
+            return;
+        }
+        drawPull(distance);
+    }
+
+    private void releasePull(BrowserTab tab) {
+        if (pullTab != tab || refreshing) return;
+        if (!pullReady || tab.web == null || tab != activeTab() || switching) {
+            cancelPull();
+            return;
+        }
+        refreshing = true;
+        pullView.animate().translationY(barBottom() + dp(PULL_REST_DP)).alpha(1f).scaleX(1f).scaleY(1f).setDuration(PULL_RETURN_MS).start();
+        pullSpin = ObjectAnimator.ofFloat(pullIcon, View.ROTATION, pullIcon.getRotation(), pullIcon.getRotation() + 360f);
+        pullSpin.setDuration(PULL_SPIN_MS);
+        pullSpin.setRepeatCount(ValueAnimator.INFINITE);
+        pullSpin.start();
+        root.removeCallbacks(pullTimeout);
+        root.postDelayed(pullTimeout, PULL_TIMEOUT_MS);
+        tab.web.reload();
+    }
+
+    private void cancelPull() {
+        if (pullTab == null || refreshing) return;
+        pullTab = null;
+        pullReady = false;
+        pullView.animate().translationY(barBottom() - dp(PULL_SIZE_DP)).alpha(0f).setDuration(PULL_RETURN_MS)
+            .withEndAction(() -> { if (pullTab == null && !refreshing) pullView.setVisibility(View.GONE); }).start();
+    }
+
+    private void hidePull() {
+        if (pullView == null) return;
+        if (root != null) root.removeCallbacks(pullTimeout);
+        if (pullSpin != null) {
+            pullSpin.cancel();
+            pullSpin = null;
+        }
+        boolean wasShowing = pullTab != null || refreshing;
+        pullTab = null;
+        pullReady = false;
+        refreshing = false;
+        if (!wasShowing) return;
+        pullView.animate().cancel();
+        pullView.animate().translationY(barBottom() - dp(PULL_SIZE_DP)).alpha(0f).setDuration(PULL_RETURN_MS)
+            .withEndAction(() -> { if (pullTab == null && !refreshing) pullView.setVisibility(View.GONE); }).start();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    private void createWeb(BrowserTab tab) {
+        WebView view = new BrowserWebView(this);
+        view.setBackgroundColor(bgColor());
+        tab.web = view;
+        configure(tab, view);
+        view.setVisibility(View.GONE);
+        root.addView(view, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        layoutChrome();
+    }
+
+    private void destroyWeb(BrowserTab tab) {
+        if (tab == null || tab.web == null) return;
+        WebView old = tab.web;
+        tab.web = null;
+        if (root != null && tab.collapse != null) root.removeCallbacks(tab.collapse);
+        clearSave(tab);
+        if (tab.id == fillTabId) clearFill();
+        if (pullTab == tab) hidePull();
+        old.stopLoading();
+        ViewGroup parent = (ViewGroup) old.getParent();
+        if (parent != null) parent.removeView(old);
+        old.destroy();
+        tab.resetPage();
+        tab.pageHost = "";
+    }
+
+    private void destroyAllWebs() {
+        for (BrowserTab tab : tabs.list()) destroyWeb(tab);
+    }
+
+    private boolean hasPage(BrowserTab tab) {
+        if (tab == null || tab.web == null) return false;
+        String url = tab.web.getUrl();
+        return url != null && isWebUrl(url);
+    }
+
+    private void deactivate(BrowserTab tab) {
+        if (tab != null && pullTab == tab) hidePull();
+        if (tab == null || tab.web == null) return;
+        if (hasPage(tab)) tab.web.evaluateJavascript(BrowserScripts.PAUSE_MEDIA, null);
+        tab.web.setVisibility(View.GONE);
+        tab.web.onPause();
+    }
+
+    private void showAddressOf(BrowserTab tab) {
+        if (address == null || address.hasFocus()) return;
+        if (tab == null || tab.start || !hasPage(tab)) address.setText("");
+        else address.setText(tab.web.getUrl());
+    }
+
+    private void showStart(BrowserTab tab) {
+        if (tab == null) return;
+        if (pullTab == tab) hidePull();
+        tab.start = true;
+        if (tab.web != null) {
+            tab.web.setVisibility(View.GONE);
+            tab.web.onPause();
+        }
+        progress.setVisibility(View.INVISIBLE);
+        renderPins();
+        updateStartInfo();
+        startView.setVisibility(View.VISIBLE);
+        paintArt(tab.seed);
+        showAddressOf(tab);
+        showBars();
+        updateBar();
+    }
+
+    private void showPage(BrowserTab tab) {
+        if (tab == null || tab.web == null) return;
+        tab.start = false;
+        startView.setVisibility(View.INVISIBLE);
+        tab.web.setVisibility(View.VISIBLE);
+        tab.web.onResume();
+        progress.setVisibility(tab.web.getProgress() < 100 ? View.VISIBLE : View.INVISIBLE);
+        progress.setProgress(tab.web.getProgress());
+        showAddressOf(tab);
+        showBars();
+        updateBar();
+    }
+
+    private void showActive() {
+        BrowserTab tab = activeTab();
+        if (tab == null) return;
+        for (BrowserTab other : tabs.list()) if (other != tab) deactivate(other);
+        if (tab.start || tab.web == null) showStart(tab);
+        else showPage(tab);
+    }
+
+    private void selectTab(BrowserTab tab) {
+        if (tab == null || switching) return;
+        BrowserTab current = activeTab();
+        if (current == tab) {
+            showActive();
+            return;
+        }
+        deactivate(current);
+        tabs.select(tab.id);
+        showActive();
+    }
+
+    private BrowserTab newTab(boolean focus) {
+        if (!ready || switching) return null;
+        if (tabs.full()) {
+            toast(BrowserTabs.MAX_TABS + " tabs are open. Close one to open another.");
+            return null;
+        }
+        deactivate(activeTab());
+        BrowserTab tab = tabs.open();
+        closeSwitcher();
+        showActive();
+        if (focus) focusAddress();
+        return tab;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    private void openInNewTab(String url, boolean switchTo) {
+        if (!ready || switching || !isWebUrl(url)) return;
+        if (tabs.full()) {
+            toast(BrowserTabs.MAX_TABS + " tabs are open. Close one to open another.");
+            return;
+        }
+        BrowserTab current = activeTab();
+        BrowserTab tab = tabs.open();
+        tab.fromStart = false;
+        tab.start = false;
+        createWeb(tab);
+        tab.web.loadUrl(BrowserPrivacy.clean(url), GPC_HEADERS);
+        if (switchTo || current == null) {
+            deactivate(current);
+            showActive();
+        } else {
+            tab.web.onPause();
+            tabs.select(current.id);
+            updateBar();
+            toast("Opened in a new tab");
+        }
+    }
+
+    private void closeTab(BrowserTab tab) {
+        if (tab == null || switching) return;
+        boolean wasActive = tab == activeTab();
+        destroyWeb(tab);
+        tabs.close(tab.id);
+        if (tabs.size() == 0) tabs.open();
+        if (wasActive || tabs.size() == 1) showActive();
+        else updateBar();
+    }
+
+    private void closeAllTabs() {
+        if (switching) return;
+        destroyAllWebs();
+        tabs.clear();
+        tabs.open();
+        showActive();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    private void loadInTab(BrowserTab tab, String url) {
+        if (tab.web == null) createWeb(tab);
+        address.clearFocus();
+        tab.web.loadUrl(BrowserPrivacy.clean(url), GPC_HEADERS);
+        if (tab == activeTab()) showPage(tab);
+        else tab.start = false;
+    }
+
+    private void backButtonPressed() {
+        BrowserTab tab = activeTab();
+        if (tab == null) return;
+        BrowserTabs.Back action = BrowserTabs.back(false, false, tab.start, hasPage(tab), tab.web != null && tab.web.canGoBack(), tab.fromStart, 1);
+        if (action == BrowserTabs.Back.WEB_BACK) tab.web.goBack();
+        else if (action == BrowserTabs.Back.SHOW_START) backToStart(tab);
+    }
+
+    private void backToStart(BrowserTab tab) {
+        if (tab.web != null && !hasPage(tab)) tab.web.stopLoading();
+        showStart(tab);
+    }
+
+    private void goForward() {
+        BrowserTab tab = activeTab();
+        if (tab == null || tab.web == null) return;
+        if (tab.start && hasPage(tab)) {
+            showPage(tab);
+            return;
+        }
+        if (tab.web.canGoForward()) tab.web.goForward();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    private void configure(BrowserTab tab, WebView view) {
+        WebSettings s = view.getSettings();
+        s.setJavaScriptEnabled(!(torMode && safer));
+        s.setDomStorageEnabled(true);
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
+        s.setGeolocationEnabled(false);
+        s.setSupportMultipleWindows(false);
+        s.setJavaScriptCanOpenWindowsAutomatically(false);
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        s.setSafeBrowsingEnabled(false);
+        s.setUserAgentString(s.getUserAgentString().replace("; wv)", ")").replace(" Version/4.0", ""));
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+            WebSettingsCompat.setRequestedWithHeaderOriginAllowList(s, Collections.emptySet());
+        }
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(view, BrowserScripts.GPC, BrowserScripts.ALL_ORIGINS);
+            if (torMode) WebViewCompat.addDocumentStartJavaScript(view, BrowserScripts.NO_WEBRTC, BrowserScripts.ALL_ORIGINS);
+        }
+        if (!torMode) attachAutofill(tab, view);
+        if (view instanceof BrowserWebView) ((BrowserWebView) view).setTopOverscroll(w -> onTopOverscroll(tab, w));
+        view.setOnTouchListener((v, e) -> {
+            int action = e.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                touchDown = true;
+                lastTouchY = e.getY();
+            } else if (action == MotionEvent.ACTION_MOVE) {
+                lastTouchY = e.getY();
+                movePull(tab, e.getY());
+            } else if (action == MotionEvent.ACTION_POINTER_DOWN) {
+                cancelPull();
+            } else if (action == MotionEvent.ACTION_UP) {
+                touchDown = false;
+                tab.lastTouchAt = SystemClock.uptimeMillis();
+                releasePull(tab);
+            } else if (action == MotionEvent.ACTION_CANCEL) {
+                touchDown = false;
+                cancelPull();
+            }
+            return false;
+        });
+        CookieManager cookies = CookieManager.getInstance();
+        cookies.setAcceptCookie(true);
+        cookies.setAcceptThirdPartyCookies(view, false);
+        tab.collapse = () -> collapseAds(tab);
+        view.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) ->
+            onDownload(tab, url, userAgent, contentDisposition, mimeType, contentLength));
+        view.setOnLongClickListener(v -> onLongPress(tab, (WebView) v));
+        int slop = dp(SCROLL_SLOP_DP);
+        view.setOnScrollChangeListener((v, x, y, oldX, oldY) -> {
+            if (v != activeWeb() || startShowing() || barsMoving() || SystemClock.uptimeMillis() < settleUntil) return;
+            int dy = y - oldY;
+            if (y <= 0) showBars();
+            else if (dy > slop) hideBars();
+            else if (dy < -slop) showBars();
+        });
+        view.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                String scheme = request.getUrl().getScheme() == null ? "" : request.getUrl().getScheme().toLowerCase(Locale.ROOT);
+                if (scheme.equals("http") || scheme.equals("https")) {
+                    if (!request.isForMainFrame()) return false;
+                    String cleaned = BrowserPrivacy.clean(url);
+                    if (!cleaned.equals(url)) {
+                        v.loadUrl(cleaned, GPC_HEADERS);
+                        return true;
+                    }
+                    return false;
+                }
+                if (request.hasGesture() && (scheme.equals("mailto") || scheme.equals("tel") || scheme.equals("sms") || scheme.equals("geo"))) {
+                    try { startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl())); } catch (Exception e) {}
+                }
+                return true;
+            }
+
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest request) {
+                if (request.isForMainFrame()) return null;
+                String url = request.getUrl().toString();
+                if (!BrowserPrivacy.shouldBlock(url, tab.pageHost, allowedSnapshot)) return null;
+                if (v != tab.web) return new WebResourceResponse("text/plain", "utf-8", 204, BLANK_REASON, Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));
+                tab.blockedCount.incrementAndGet();
+                sessionBlocked.incrementAndGet();
+                if (tab.blockedQueued.incrementAndGet() <= MAX_COLLAPSE_URLS) tab.blockedUrls.add(url);
+                runOnUiThread(() -> {
+                    if (tab == activeTab()) updateShield();
+                    scheduleCollapse(tab);
+                });
+                return new WebResourceResponse("text/plain", "utf-8", 204, BLANK_REASON, Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));
+            }
+
+            @Override
+            public void onPageStarted(WebView v, String url, android.graphics.Bitmap favicon) {
+                if (v != tab.web || !isWebUrl(url)) return;
+                tab.pageHost = BrowserPrivacy.hostOf(url);
+                tab.url = url;
+                tab.title = "";
+                tab.resetPage();
+                if (tab != activeTab() || tab.start) return;
+                progress.setVisibility(View.VISIBLE);
+                if (!address.hasFocus()) address.setText(url);
+                showBars();
+                updateBar();
+            }
+
+            @Override
+            public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail detail) {
+                rendererGone();
+                return true;
+            }
+
+            @Override
+            public void onPageFinished(WebView v, String url) {
+                if (v != tab.web) return;
+                if (refreshing && pullTab == tab) hidePull();
+                if (isWebUrl(url)) tab.url = url;
+                scheduleCollapse(tab);
+                if (tab != activeTab() || tab.start) return;
+                progress.setVisibility(View.INVISIBLE);
+                updateBar();
+            }
+
+            @Override
+            public void doUpdateVisitedHistory(WebView v, String url, boolean isReload) {
+                if (v != tab.web) return;
+                if (isWebUrl(url)) tab.url = url;
+                if (switcherOpen()) renderSwitcher();
+                if (tab != activeTab() || tab.start) return;
+                if (!address.hasFocus() && isWebUrl(url)) address.setText(url);
+                updateBar();
+            }
+        });
+        view.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView v, int newProgress) {
+                if (v != tab.web || tab != activeTab() || tab.start) return;
+                progress.setProgress(newProgress);
+            }
+
+            @Override
+            public void onReceivedTitle(WebView v, String title) {
+                if (v != tab.web) return;
+                tab.title = title == null ? "" : title;
+                if (switcherOpen()) renderSwitcher();
+            }
+
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                callback.invoke(origin, false, false);
+            }
+
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                request.deny();
+            }
+        });
+    }
+
+    private void attachAutofill(BrowserTab tab, WebView view) {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) || !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return;
+        String script = BrowserScripts.autofill(this);
+        if (script == null) return;
+        try {
+            WebViewCompat.addWebMessageListener(view, BrowserFill.BRIDGE_NAME, BrowserScripts.ALL_ORIGINS, (v, message, sourceOrigin, isMainFrame, reply) ->
+                onFillMessage(tab, v, message == null ? null : message.getData(), sourceOrigin, isMainFrame, reply));
+            WebViewCompat.addDocumentStartJavaScript(view, script, BrowserScripts.ALL_ORIGINS);
+        } catch (Exception e) {
+        }
+    }
+
+    private void onFillMessage(BrowserTab tab, WebView view, String data, Uri origin, boolean mainFrame, JavaScriptReplyProxy reply) {
+        if (torMode || !mainFrame || view == null || view != tab.web || data == null || origin == null) return;
+        String scheme = origin.getScheme() == null ? "" : origin.getScheme().toLowerCase(Locale.ROOT);
+        if (!scheme.equals("https") && !scheme.equals("http")) return;
+        String host = origin.getHost();
+        if (host == null || !BrowserFill.sameHost(host, tab.pageHost)) return;
+        BrowserFill.Message message = BrowserFill.parseMessage(data);
+        if (message == null) return;
+        if (BrowserFill.TYPE_SAVE.equals(message.type)) {
+            queueSave(tab, BrowserFill.domainOf(scheme + "://" + host + "/"), message.save);
+            return;
+        }
+        if (tab != activeTab() || tab.start) return;
+        if (BrowserFill.TYPE_GENERATED.equals(message.type) || BrowserFill.TYPE_FILLED.equals(message.type)) {
+            if (SystemClock.uptimeMillis() > tab.expectReplyUntil) return;
+            tab.expectReplyUntil = 0;
+            if (BrowserFill.TYPE_GENERATED.equals(message.type)) {
+                toast("A strong " + message.number + "-character password is filled in" + (message.both ? " both boxes." : ".") + " The browser offers to save it when you sign up.");
+            } else if (message.number == 0) {
+                toast("No matching fields were empty on this page");
+            }
+            return;
+        }
+        if (SystemClock.uptimeMillis() - tab.lastTouchAt > FILL_TOUCH_WINDOW_MS) return;
+        tab.lastTouchAt = 0;
+        String messageOrigin = BrowserFill.originOf(scheme + "://" + origin.getAuthority() + "/");
+        if (messageOrigin == null || tapMuted(host)) return;
+        if (BrowserFill.TYPE_FILL.equals(message.type)) requestFill(tab, BrowserFill.FIELD_EMAIL.equals(message.field));
+        else if (BrowserFill.TYPE_INFO.equals(message.type)) requestInfo(tab, message.field, message.fields, reply, messageOrigin);
+        else if (BrowserFill.TYPE_GENERATE.equals(message.type)) requestGenerate(tab, reply, messageOrigin);
+    }
+
+    private boolean tapMuted(String host) {
+        Long at = mutedTaps.get(host.toLowerCase(Locale.ROOT));
+        return at != null && SystemClock.uptimeMillis() - at < TAP_MUTE_MS;
+    }
+
+    private void muteTaps(String host) {
+        if (host != null) mutedTaps.put(host.toLowerCase(Locale.ROOT), SystemClock.uptimeMillis());
+    }
+
+    private boolean pageReady(BrowserTab tab) {
+        return tab != null && tab.web != null && !tab.start && !switching && ready && !isFinishing() && !fillBusy() && fillDialog == null && saveDialog == null;
+    }
+
+    private void requestInfo(BrowserTab tab, String field, List<String> fields, JavaScriptReplyProxy reply, String messageOrigin) {
+        if (torMode || reply == null || !pageReady(tab)) return;
+        String url = tab.web.getUrl();
+        if (!isWebUrl(url) || !messageOrigin.equals(BrowserFill.originOf(url))) return;
+        String host = BrowserFill.domainOf(url);
+        if (host.isEmpty()) return;
+        Runnable launch = () -> launchInfo(tab, host, field, fields, reply, messageOrigin);
+        if (!BrowserFill.secure(url)) {
+            confirmFill(tab, "This page isn't secure",
+                host + " is not using https, so anything sent from this page can be read on the way. Fill your Personal Info anyway?",
+                "Fill anyway", false, launch);
+            return;
+        }
+        launch.run();
+    }
+
+    private void launchInfo(BrowserTab tab, String host, String field, List<String> fields, JavaScriptReplyProxy reply, String origin) {
+        if (torMode || switching || isFinishing() || fillBusy() || tab != activeTab() || !pageHostIs(tab, host)) return;
+        if (!origin.equals(BrowserFill.originOf(tab.web.getUrl()))) return;
+        fillTabId = tab.id;
+        fillHost = host;
+        fillOrigin = origin;
+        fillTor = false;
+        fillFields = fields;
+        fillProxy = reply;
+        try {
+            startActivityForResult(BrowserFill.infoIntent(this, host, field, fields), REQUEST_INFO);
+        } catch (Exception e) {
+            clearFill();
+            toast("Could not open Valid Vault");
+        }
+    }
+
+    private void finishInfo(int resultCode, Intent data) {
+        int tabId = fillTabId;
+        String host = fillHost;
+        String origin = fillOrigin;
+        List<String> fields = fillFields;
+        JavaScriptReplyProxy reply = fillProxy;
+        clearFill();
+        String result = data == null ? null : data.getStringExtra(BrowserFill.EXTRA_RESULT_INFO);
+        if (data != null) data.removeExtra(BrowserFill.EXTRA_RESULT_INFO);
+        if (resultCode != RESULT_OK || result == null) {
+            muteTaps(host);
+            return;
+        }
+        if (tabId < 0 || host == null || origin == null || reply == null) {
+            toast("Nothing was filled. Try again from the page.");
+            return;
+        }
+        BrowserTab tab = tabs.find(tabId);
+        if (tab == null || tab.web == null || torMode || switching) return;
+        if (!pageHostIs(tab, host) || !origin.equals(BrowserFill.originOf(tab.web.getUrl()))) {
+            toast("The page changed, so nothing was filled");
+            return;
+        }
+        String command = BrowserFill.infoCommand(result, fields);
+        if (command == null) {
+            toast("Nothing was filled");
+            return;
+        }
+        try {
+            tab.expectReplyUntil = SystemClock.uptimeMillis() + REPLY_WINDOW_MS;
+            reply.postMessage(command);
+        } catch (Exception e) {
+            toast("Could not fill this page");
+        }
+    }
+
+    private void requestGenerate(BrowserTab tab, JavaScriptReplyProxy reply, String origin) {
+        if (torMode || reply == null || !pageReady(tab)) return;
+        if (!origin.equals(BrowserFill.originOf(tab.web.getUrl()))) return;
+        String host = tab.pageHost;
+        CharSequence[] styles = { "With special characters (Aa1!)", "Letters and numbers only (Aa1)" };
+        fillDialog = dialog()
+            .setTitle("New password")
+            .setItems(styles, (d, which) -> {
+                if (torMode || switching || tab != activeTab() || tab.web == null || !origin.equals(BrowserFill.originOf(tab.web.getUrl()))) return;
+                String command = BrowserFill.generateCommand(which == 1 ? BrowserFill.STYLE_PLAIN : BrowserFill.STYLE_FULL, genMin, genMax);
+                if (command == null) return;
+                try {
+                    tab.expectReplyUntil = SystemClock.uptimeMillis() + REPLY_WINDOW_MS;
+                    reply.postMessage(command);
+                } catch (Exception e) {
+                    toast("Could not fill this page");
+                }
+            })
+            .setNegativeButton("Cancel", (d, w) -> muteTaps(host))
+            .setOnCancelListener(d -> muteTaps(host))
+            .create();
+        fillDialog.setOnDismissListener(d -> { if (fillDialog == d) fillDialog = null; });
+        fillDialog.show();
+    }
+
+    private boolean fillBusy() {
+        return fillTabId >= 0;
+    }
+
+    private void clearFill() {
+        fillTabId = -1;
+        fillHost = null;
+        fillOrigin = null;
+        fillTor = false;
+        fillFields = Collections.emptyList();
+        fillProxy = null;
+    }
+
+    private void dismissFillDialogs() {
+        if (saveDialog != null) {
+            AlertDialog dialog = saveDialog;
+            saveDialog = null;
+            try { dialog.dismiss(); } catch (Exception e) {}
+        }
+        if (fillDialog != null) {
+            AlertDialog dialog = fillDialog;
+            fillDialog = null;
+            try { dialog.dismiss(); } catch (Exception e) {}
+        }
+    }
+
+    private boolean pageHostIs(BrowserTab tab, String host) {
+        if (tab == null || tab.web == null || tab.start) return false;
+        String url = tab.web.getUrl();
+        return isWebUrl(url) && BrowserFill.sameHost(BrowserFill.domainOf(url), host);
+    }
+
+    private void requestFill(BrowserTab tab, boolean emailField) {
+        if (!pageReady(tab)) return;
+        String url = tab.web.getUrl();
+        if (!isWebUrl(url)) return;
+        String host = BrowserFill.domainOf(url);
+        if (host.isEmpty()) return;
+        boolean secure = BrowserFill.secure(url);
+        if (torMode) {
+            if (safer) {
+                toast("Turn Safer off to fill logins. Filling needs JavaScript.");
+                return;
+            }
+            if (!secure) {
+                toast("In Tor mode, logins only fill on https pages");
+                return;
+            }
+            if (!torFillWarned) {
+                confirmFill(tab, "Sign in with Tor?",
+                    "Signing in tells " + host + " who you are, even through Tor. When you're done with this site, tap New identity before you visit anything else.",
+                    "Fill login", true, () -> launchFill(tab, host, false));
+                return;
+            }
+            launchFill(tab, host, false);
+            return;
+        }
+        if (!secure) {
+            confirmFill(tab, "This page isn't secure",
+                host + " is not using https, so anything sent from this page can be read on the way. Fill your login anyway?",
+                "Fill anyway", false, () -> launchFill(tab, host, emailField));
+            return;
+        }
+        launchFill(tab, host, emailField);
+    }
+
+    private void confirmFill(BrowserTab tab, String title, String message, String okLabel, boolean torNote, Runnable launch) {
+        fillDialog = dialog()
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(okLabel, (d, w) -> {
+                if (torNote) {
+                    if (!torMode) return;
+                    torFillWarned = true;
+                }
+                launch.run();
+            })
+            .setNegativeButton("Cancel", null)
+            .create();
+        fillDialog.setOnDismissListener(d -> { if (fillDialog == d) fillDialog = null; });
+        fillDialog.show();
+    }
+
+    private void launchFill(BrowserTab tab, String host, boolean emailField) {
+        if (switching || isFinishing() || fillBusy() || tab != activeTab() || !pageHostIs(tab, host)) return;
+        if (torMode && (safer || !BrowserFill.secure(tab.web.getUrl()))) return;
+        String origin = BrowserFill.originOf(tab.web.getUrl());
+        if (origin == null) return;
+        fillTabId = tab.id;
+        fillHost = host;
+        fillOrigin = origin;
+        fillTor = torMode;
+        try {
+            startActivityForResult(BrowserFill.fillIntent(this, host, emailField && !torMode), REQUEST_FILL);
+        } catch (Exception e) {
+            clearFill();
+            toast("Could not open Valid Vault");
+        }
+    }
+
+    private void finishFill(int resultCode, Intent data) {
+        int tabId = fillTabId;
+        String host = fillHost;
+        String origin = fillOrigin;
+        boolean wasTor = fillTor;
+        clearFill();
+        String username = data == null ? null : data.getStringExtra(BrowserFill.EXTRA_RESULT_USERNAME);
+        String password = data == null ? null : data.getStringExtra(BrowserFill.EXTRA_RESULT_PASSWORD);
+        if (data != null) {
+            data.removeExtra(BrowserFill.EXTRA_RESULT_USERNAME);
+            data.removeExtra(BrowserFill.EXTRA_RESULT_PASSWORD);
+        }
+        String user = username == null ? "" : username;
+        String pass = password == null ? "" : password;
+        if (resultCode != RESULT_OK || (user.isEmpty() && pass.isEmpty())) {
+            if (resultCode != RESULT_OK) muteTaps(host);
+            return;
+        }
+        if (tabId < 0 || host == null || origin == null) {
+            toast("Nothing was filled. Try again from the page.");
+            return;
+        }
+        BrowserTab tab = tabs.find(tabId);
+        if (tab == null || tab.web == null || wasTor != torMode || switching) return;
+        if (!pageHostIs(tab, host) || !origin.equals(BrowserFill.originOf(tab.web.getUrl()))) {
+            toast("The page changed, so nothing was filled");
+            return;
+        }
+        if (torMode && (safer || !BrowserFill.secure(tab.web.getUrl()))) return;
+        String key = BrowserFill.loginKey(host, user, pass);
+        WebView target = tab.web;
+        target.evaluateJavascript(BrowserFill.fillScript(origin, user, pass), result -> {
+            if (target != tab.web) return;
+            int filled = BrowserFill.fillResult(result);
+            if (filled == BrowserFill.FILL_WRONG_PAGE) toast("The page changed, so nothing was filled");
+            else if (filled == BrowserFill.FILLED_NONE) toast("No login fields found on this page");
+            else if (filled < 0) toast("Could not fill this page");
+            else rememberLogin(key);
+        });
+    }
+
+    private void rememberLogin(String key) {
+        if (knownLogins.size() >= MAX_KNOWN_LOGINS) knownLogins.clear();
+        knownLogins.add(key);
+    }
+
+    private void queueSave(BrowserTab tab, String host, BrowserFill.Save save) {
+        if (torMode || host.isEmpty() || root == null) return;
+        if (knownLogins.contains(BrowserFill.loginKey(host, save.username, save.password))) return;
+        Long muted = mutedSaves.get(host);
+        long now = SystemClock.uptimeMillis();
+        if (muted != null && now - muted < SAVE_MUTE_MS) return;
+        tab.pendingSave = save;
+        tab.pendingSaveHost = host;
+        tab.pendingSaveAt = now;
+        scheduleSavePrompt(tab);
+    }
+
+    private void scheduleSavePrompt(BrowserTab tab) {
+        if (tab.savePrompt != null) root.removeCallbacks(tab.savePrompt);
+        tab.savePrompt = () -> promptSave(tab);
+        root.postDelayed(tab.savePrompt, SAVE_PROMPT_DELAY_MS);
+    }
+
+    private void clearSave(BrowserTab tab) {
+        if (tab == null) return;
+        if (root != null && tab.savePrompt != null) root.removeCallbacks(tab.savePrompt);
+        tab.savePrompt = null;
+        tab.pendingSave = null;
+        tab.pendingSaveHost = null;
+        tab.pendingSaveAt = 0;
+    }
+
+    private void promptSave(BrowserTab tab) {
+        tab.savePrompt = null;
+        BrowserFill.Save save = tab.pendingSave;
+        String host = tab.pendingSaveHost;
+        if (save == null || host == null || torMode || isFinishing() || tab.web == null || SystemClock.uptimeMillis() - tab.pendingSaveAt > SAVE_PENDING_MS) {
+            clearSave(tab);
+            return;
+        }
+        if (tab != activeTab() || tab.start) {
+            clearSave(tab);
+            return;
+        }
+        if (!resumed || switching || saveDialog != null || fillDialog != null || fillBusy()) {
+            scheduleSavePrompt(tab);
+            return;
+        }
+        clearSave(tab);
+        String key = BrowserFill.loginKey(host, save.username, save.password);
+        if (knownLogins.contains(key)) return;
+        String who = save.username.isEmpty() ? "No username" : save.username;
+        saveDialog = dialog()
+            .setTitle("Save this login?")
+            .setMessage(who + "\n" + host + "\n\nValid Vault will unlock, then save it encrypted in your vault.")
+            .setPositiveButton("Save", (d, w) -> launchSave(host, save, key))
+            .setNegativeButton("Not now", (d, w) -> declineSave(host, key))
+            .setOnCancelListener(d -> declineSave(host, key))
+            .create();
+        saveDialog.setOnDismissListener(d -> { if (saveDialog == d) saveDialog = null; });
+        saveDialog.show();
+    }
+
+    private void declineSave(String host, String key) {
+        rememberLogin(key);
+        mutedSaves.put(host, SystemClock.uptimeMillis());
+    }
+
+    private void launchSave(String host, BrowserFill.Save save, String key) {
+        if (torMode || isFinishing() || fillBusy()) return;
+        rememberLogin(key);
+        try {
+            startActivityForResult(BrowserFill.saveIntent(this, host, save), REQUEST_SAVE);
+        } catch (Exception e) {
+            toast("Could not open Valid Vault");
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_FILL) finishFill(resultCode, data);
+        else if (requestCode == REQUEST_INFO) finishInfo(resultCode, data);
+    }
+
+    private boolean onLongPress(BrowserTab tab, WebView view) {
+        WebView.HitTestResult hit = view.getHitTestResult();
+        if (hit == null) return false;
+        int type = hit.getType();
+        if (type == WebView.HitTestResult.SRC_ANCHOR_TYPE) {
+            String url = hit.getExtra();
+            if (url == null || !isWebUrl(url)) return false;
+            showLinkMenu(url);
+            return true;
+        }
+        if (type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+            Handler handler = new Handler(Looper.getMainLooper(), message -> {
+                String url = message.getData() == null ? null : message.getData().getString("url");
+                if (url != null && isWebUrl(url) && view == tab.web) showLinkMenu(url);
+                return true;
+            });
+            view.requestFocusNodeHref(handler.obtainMessage());
+            return true;
+        }
+        return false;
+    }
+
+    private void showLinkMenu(String url) {
+        if (isFinishing()) return;
+        String shown = url.length() > MAX_LINK_LABEL ? url.substring(0, MAX_LINK_LABEL) + "…" : url;
+        dialog()
+            .setTitle(shown)
+            .setItems(new CharSequence[] { "Open in new tab", "Copy link", "Share link" }, (d, which) -> {
+                if (which == 0) openInNewTab(url, false);
+                else if (which == 1) copyText(url);
+                else shareText(url, null);
+            })
+            .show();
+    }
+
+    private void scheduleCollapse(BrowserTab tab) {
+        if (root == null || tab.collapse == null || !tab.collapseScheduled.compareAndSet(false, true)) return;
+        root.postDelayed(tab.collapse, COLLAPSE_DELAY_MS);
+    }
+
+    private void collapseAds(BrowserTab tab) {
+        tab.collapseScheduled.set(false);
+        if (tab.web == null || !hasPage(tab) || (torMode && safer)) return;
+        if (BrowserPrivacy.siteAllowed(tab.pageHost, allowedSnapshot)) return;
+        List<String> urls = new ArrayList<>(tab.blockedUrls);
+        tab.web.evaluateJavascript(BrowserScripts.collapse(urls), null);
+    }
+
+    private void updateBar() {
+        BrowserTab tab = activeTab();
+        boolean canBack = tab != null && !tab.start && ((hasPage(tab) && tab.web.canGoBack()) || tab.fromStart || tabs.size() <= 1);
+        boolean canForward = tab != null && tab.web != null && ((tab.start && hasPage(tab)) || (!tab.start && tab.web.canGoForward()));
+        if (backButton != null) backButton.setAlpha(canBack ? 1f : 0.35f);
+        if (forwardButton != null) forwardButton.setAlpha(canForward ? 1f : 0.35f);
+        if (tabButton != null) {
+            int count = Math.max(1, tabs.size());
+            tabButton.setText(String.valueOf(count));
+            tabButton.setContentDescription(count + (count == 1 ? " tab open" : " tabs open"));
+        }
+        updateShield();
+    }
+
+    private void updateShield() {
+        if (startShowing()) updateStartInfo();
+    }
+
+    private void toggleSite() {
+        BrowserTab tab = activeTab();
+        String site = tab == null ? "" : BrowserSettings.normalizeSite(tab.pageHost);
+        if (tab == null || tab.start || !hasPage(tab) || site.isEmpty()) {
+            Toast.makeText(this, "Trackers blocked this session: " + sessionBlocked.get(), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (torMode) {
+            toast("The tracker switch is off in Tor mode, so nothing about this session is saved");
+            return;
+        }
+        String host = tab.pageHost;
+        BrowserSettings settings = BrowserSettings.update(this, current -> {
+            if (BrowserPrivacy.siteAllowed(host, current.allowedSites)) {
+                current.allowedSites.removeIf(s -> BrowserPrivacy.hostIs(host, s));
+            } else {
+                current.allowedSites.add(site);
+            }
+        });
+        if (settings == null) {
+            Toast.makeText(this, "Could not save the change", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        boolean nowOff = BrowserPrivacy.siteAllowed(host, settings.allowedSites);
+        loadSettings();
+        Toast.makeText(this, nowOff ? "Tracker blocking off for " + site : "Tracker blocking on for " + site, Toast.LENGTH_SHORT).show();
+        tab.web.reload();
+    }
+
+    private String currentUrl() {
+        BrowserTab tab = activeTab();
+        if (tab == null || tab.start || !hasPage(tab)) return null;
+        return tab.web.getUrl();
+    }
+
+    private void showMenu(View anchor) {
+        PopupMenu popup = new PopupMenu(menuContext(), anchor);
+        Menu menu = popup.getMenu();
+        BrowserTab tab = activeTab();
+        String url = currentUrl();
+        boolean page = url != null;
+        boolean off = page && BrowserPrivacy.siteAllowed(tab.pageHost, allowedSnapshot);
+        boolean pinned = page && BrowserPins.contains(pinsSnapshot, url);
+        int order = 0;
+        if (torMode) {
+            menu.add(Menu.NONE, MENU_NEW_IDENTITY, ++order, "New identity").setEnabled(!switching);
+            menu.add(Menu.NONE, MENU_SAFER, ++order, "Safer: JavaScript off").setCheckable(true).setChecked(safer).setEnabled(!switching);
+            menu.add(Menu.NONE, MENU_FILL, ++order, "Fill login").setEnabled(page && ready && !switching && !safer);
+        } else {
+            menu.add(Menu.NONE, MENU_PIN, ++order, pinned ? "Remove from new tab quick view" : "Add to new tab quick view").setEnabled(page);
+            menu.add(Menu.NONE, MENU_TRACKERS, ++order, off ? "Turn tracker blocking on for this site" : "Turn tracker blocking off for this site").setEnabled(page);
+        }
+        menu.add(Menu.NONE, MENU_TOR, ++order, torMode ? "Turn off Tor mode" : "Turn on Tor mode").setEnabled(ready && !switching);
+        menu.add(Menu.NONE, MENU_SETTINGS, ++order, "Valid Vault settings");
+        menu.add(Menu.NONE, MENU_ABOUT, ++order, "About");
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            BrowserTab current = activeTab();
+            if (id == MENU_FILL) requestFill(current, false);
+            else if (id == MENU_PIN) togglePin();
+            else if (id == MENU_TRACKERS) toggleSite();
+            else if (id == MENU_TOR) {
+                if (torMode) stopTor();
+                else startTor();
+            }
+            else if (id == MENU_NEW_IDENTITY) newIdentity();
+            else if (id == MENU_SAFER) toggleSafer();
+            else if (id == MENU_SETTINGS) openVault(LaunchTarget.TAB_SETTINGS, "Settings");
+            else if (id == MENU_ABOUT) showAbout();
+            return true;
+        });
+        popup.show();
+    }
+
+    private void showAbout() {
+        if (isFinishing()) return;
+        String version = "";
+        try {
+            version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            version = "";
+        }
+        dialog()
+            .setTitle("About")
+            .setMessage("Valid Vault private browser" + (version == null || version.isEmpty() ? "" : "\nVersion " + version))
+            .setPositiveButton("OK", null)
+            .show();
+    }
+
+    private void togglePin() {
+        String url = currentUrl();
+        if (url == null || torMode) return;
+        BrowserTab tab = activeTab();
+        boolean pinned = BrowserPins.contains(pinsSnapshot, url);
+        setPinned(url, tab == null ? "" : tab.title, !pinned);
+    }
+
+    private void applyTheme() {
+        int bar = barColor();
+        int bg = bgColor();
+        root.setBackgroundColor(bg);
+        startView.setBackgroundColor(bg);
+        art.setBackgroundColor(bg);
+        switcher.setBackgroundColor(bg);
+        for (BrowserTab tab : tabs.list()) if (tab.web != null) tab.web.setBackgroundColor(bg);
+        topWrap.setBackgroundColor(bar);
+        bottomBar.setBackgroundColor(bar);
+        statusScrim.setBackgroundColor(bar);
+        navScrim.setBackgroundColor(bar);
+        address.setBackground(frame());
+        address.setTextColor(textColor());
+        address.setHintTextColor(dimColor());
+        address.setHint(torMode ? HINT_TOR : HINT_NORMAL);
+        updateThemeButton();
+        tabButton.setBackground(tabFrame());
+        embossText(tabButton, accentColor());
+        progress.setProgressTintList(ColorStateList.valueOf(accentColor()));
+        for (Map.Entry<ImageButton, Integer> entry : chromeIcons.entrySet()) {
+            entry.getKey().setImageDrawable(emboss(entry.getValue()));
+            entry.getKey().setBackground(ripple());
+        }
+        haloText(startInfo, textColor());
+        haloText(saveLink, textColor());
+        switcherTitle.setTextColor(textColor());
+        switcherCloseAll.setTextColor(dimColor());
+        switcherAdd.setTextColor(textColor());
+        GradientDrawable pull = (GradientDrawable) pullView.getBackground();
+        pull.setColor(bar);
+        pull.setStroke(dp(1), borderColor());
+        pullIcon.setImageDrawable(emboss(R.drawable.vv_ic_refresh));
+        applySystemBars();
+        setTaskDescription(new ActivityManager.TaskDescription(TASK_LABEL, R.drawable.vv_logo, bar));
+        renderPins();
+        if (switcherOpen()) renderSwitcher();
+        updateShield();
+        updateStartInfo();
+        BrowserTab current = activeTab();
+        if (current != null && startShowing()) paintArt(current.seed);
+    }
+
+    private void updateThemeButton() {
+        if (themeButton == null) return;
+        themeButton.setImageDrawable(emboss(dayMode ? R.drawable.vv_ic_moon : R.drawable.vv_ic_sun));
+        themeButton.setContentDescription(dayMode ? "Night mode" : "Day mode");
+        themeButton.setBackground(ripple());
+    }
+
+    private void toggleDayNight() {
+        boolean next = !dayMode;
+        BrowserSettings saved = BrowserSettings.update(this, settings -> {
+            settings.theme = next ? BrowserSettings.THEME_DAY : BrowserSettings.THEME_NIGHT;
+            settings.themeChosen = true;
+        });
+        if (saved == null) {
+            toast("Could not save the change");
+            return;
+        }
+        dayMode = next;
+        applyTheme();
+    }
+
+    @SuppressWarnings("deprecation")
+    private void applySystemBars() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                android.view.WindowInsetsController controller = getWindow().getDecorView().getWindowInsetsController();
+                if (controller == null) return;
+                int mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                controller.setSystemBarsAppearance(dayMode ? mask : 0, mask);
+            } else {
+                View decor = getWindow().getDecorView();
+                int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+                if (dayMode) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                decor.setSystemUiVisibility(flags);
+            }
+        } catch (RuntimeException e) {
+        }
+    }
+
+    private void toast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
+    private void forgetFillSession() {
+        dismissFillDialogs();
+        clearFill();
+        knownLogins.clear();
+        mutedSaves.clear();
+        mutedTaps.clear();
+        torFillWarned = false;
+    }
+
+    private void resetSession(Runnable after) {
+        closeSwitcher();
+        hideKeyboard();
+        destroyAllWebs();
+        tabs.clear();
+        sessionBlocked.set(0);
+        forgetFillSession();
+        startView.setVisibility(View.INVISIBLE);
+        wipe(art, () -> {
+            if (isDestroyed() || rendererLost) return;
+            tabs.open();
+            showActive();
+            if (after != null) after.run();
+        });
+    }
+
+    private void startTor() {
+        if (switching || torMode) return;
+        if (!BrowserTor.supported()) {
+            toast("Tor mode needs a newer Android System WebView. Update it from the Play Store, then try again.");
+            return;
+        }
+        switching = true;
+        Toast.makeText(this, "Checking Orbot", Toast.LENGTH_SHORT).show();
+        Thread check = new Thread(() -> {
+            boolean ok = BrowserTor.socksReady();
+            runOnUiThread(() -> {
+                if (isDestroyed()) return;
+                if (!ok) {
+                    endSwitch();
+                    showOrbotMissing();
+                    return;
+                }
+                enterTor();
+            });
+        });
+        check.start();
+    }
+
+    private void enterTor() {
+        closeSwitcher();
+        forgetFillSession();
+        destroyAllWebs();
+        tabs.clear();
+        startView.setVisibility(View.INVISIBLE);
+        try {
+            ProxyController.getInstance().setProxyOverride(BrowserTor.config(), getMainExecutor(), () -> {
+                if (isDestroyed()) return;
+                torMode = true;
+                safer = false;
+                resetSession(() -> {
+                    applyTheme();
+                    endSwitch();
+                    showTorNote();
+                });
+            });
+        } catch (Exception e) {
+            torMode = false;
+            resetSession(() -> {
+                applyTheme();
+                endSwitch();
+                toast("Tor mode could not start on this phone");
+            });
+        }
+    }
+
+    private void stopTor() {
+        if (switching || !torMode) return;
+        switching = true;
+        closeSwitcher();
+        forgetFillSession();
+        destroyAllWebs();
+        tabs.clear();
+        startView.setVisibility(View.INVISIBLE);
+        Runnable after = () -> {
+            if (isDestroyed()) return;
+            torMode = false;
+            safer = false;
+            resetSession(() -> {
+                applyTheme();
+                endSwitch();
+                toast("Tor mode is off. Everything from the Tor session was cleared.");
+            });
+        };
+        try {
+            ProxyController.getInstance().clearProxyOverride(getMainExecutor(), after);
+        } catch (Exception e) {
+            toast("Tor could not be fully turned off. Close the browser and open it again to use it without Tor.");
+            after.run();
+        }
+    }
+
+    private void newIdentity() {
+        if (switching || !torMode) return;
+        switching = true;
+        resetSession(() -> {
+            endSwitch();
+            toast("New identity. Tabs, cookies, logins and history from this session were cleared. For a new Tor route too, refresh the connection in Orbot.");
+        });
+    }
+
+    private void toggleSafer() {
+        if (!torMode || switching) return;
+        safer = !safer;
+        for (BrowserTab tab : tabs.list()) {
+            if (tab.web == null) continue;
+            tab.web.getSettings().setJavaScriptEnabled(!safer);
+            if (hasPage(tab)) tab.web.reload();
+        }
+        updateStartInfo();
+        toast(safer ? "Safer is on. JavaScript is off, so some sites will lose menus, logins and video." : "Safer is off. JavaScript is back on.");
+    }
+
+    private void showTorNote() {
+        if (isFinishing()) return;
+        dialog()
+            .setTitle("Tor mode is on")
+            .setMessage("Every page now goes through Orbot. If Orbot stops, pages stop loading until it is running again.\n\n"
+                + "Sites can no longer see your IP address or location. They can still see some details about your phone's browser.\n\n"
+                + "Signing in tells that site who you are. After using a site you signed into, tap New identity in this menu and refresh the connection in Orbot before you visit anything else.\n\n"
+                + "Downloads are off while Tor mode is on.")
+            .setPositiveButton("Got it", null)
+            .show();
+    }
+
+    private void showOrbotMissing() {
+        if (isFinishing()) return;
+        Intent launch = BrowserTor.launchIntent(this);
+        AlertDialog.Builder builder = dialog()
+            .setTitle("Orbot isn't running")
+            .setNegativeButton("Cancel", null);
+        if (launch != null) {
+            builder.setMessage("Tor mode needs Orbot to be running. Open Orbot, tap Start, then turn Tor mode on again.")
+                .setPositiveButton("Open Orbot", (d, w) -> {
+                    try { startActivity(launch); } catch (Exception e) { toast("Could not open Orbot"); }
+                });
+        } else {
+            builder.setMessage("Tor mode needs Orbot, the Tor Project's app. Install it, start it, then turn Tor mode on again.")
+                .setPositiveButton("Get Orbot", (d, w) -> {
+                    try {
+                        startActivity(BrowserTor.storeIntent(false));
+                    } catch (Exception e) {
+                        try { startActivity(BrowserTor.storeIntent(true)); } catch (Exception ignored) { toast("Could not open the store"); }
+                    }
+                });
+        }
+        builder.show();
+    }
+
+    private void onDownload(BrowserTab tab, String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+        if (torMode) {
+            toast("Downloads are off while Tor mode is on");
+            return;
+        }
+        if (!BrowserDownloads.downloadable(url)) {
+            toast("This file can't be downloaded here");
+            return;
+        }
+        String name = BrowserDownloads.fileName(url, contentDisposition, mimeType);
+        String pageUrl = hasPage(tab) ? tab.web.getUrl() : null;
+        String size = contentLength > 0 ? Formatter.formatShortFileSize(this, contentLength) : null;
+        dialog()
+            .setTitle("Download this file?")
+            .setMessage(size == null ? name : name + "\n" + size)
+            .setPositiveButton("Download", (d, w) -> startDownload(url, userAgent, mimeType, name, pageUrl))
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void startDownload(String url, String userAgent, String mimeType, String name, String pageUrl) {
+        if (torMode) return;
+        withStorage(() -> {
+            if (torMode) return;
+            boolean ok = BrowserDownloads.enqueue(this, url, userAgent, mimeType, name, pageUrl);
+            toast(ok ? "Downloading " + name + " to Downloads" : "Could not start the download");
+        }, null);
+    }
+
+    private void withStorage(Runnable run, Runnable denied) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            if (pendingStorage != null) {
+                if (denied != null) denied.run();
+                return;
+            }
+            pendingStorage = run;
+            storageDenied = denied;
+            requestPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE }, REQUEST_STORAGE);
+            return;
+        }
+        run.run();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_STORAGE) return;
+        Runnable run = pendingStorage;
+        Runnable denied = storageDenied;
+        pendingStorage = null;
+        storageDenied = null;
+        if (run == null) return;
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) run.run();
+        else {
+            if (denied != null) denied.run();
+            toast("Saving to Downloads needs storage access on this version of Android");
+        }
+    }
+
+    private void copyText(String text) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard == null) return;
+        clipboard.setPrimaryClip(ClipData.newPlainText("Link", text));
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) Toast.makeText(this, "Link copied", Toast.LENGTH_SHORT).show();
+    }
+
+    private void shareText(String url, String title) {
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/plain");
+        send.putExtra(Intent.EXTRA_TEXT, url);
+        if (title != null && !title.isEmpty()) send.putExtra(Intent.EXTRA_SUBJECT, title);
+        try {
+            startActivity(Intent.createChooser(send, "Share link"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not share this link", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void sharePage() {
+        String url = currentUrl();
+        if (url == null) {
+            Toast.makeText(this, "Open a page to share it", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        BrowserTab tab = activeTab();
+        shareText(url, tab == null || tab.web == null ? null : tab.web.getTitle());
+    }
+
+    private void openVault(String target, String name) {
+        try {
+            startActivity(LaunchTarget.tabIntent(this, target));
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open " + name, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private static boolean isWebUrl(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase(Locale.ROOT);
+        return lower.startsWith("https://") || lower.startsWith("http://");
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    private void open(String input) {
+        BrowserTab tab = activeTab();
+        if (tab == null || switching || !ready) return;
+        String text = input == null ? "" : input.trim();
+        if (text.isEmpty()) return;
+        String url;
+        if (SCHEME.matcher(text).matches() && text.contains("://")) {
+            if (!isWebUrl(text)) {
+                Toast.makeText(this, "Only web addresses open here", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            url = text;
+        } else if (!text.contains(" ") && HOSTLIKE.matcher(text).matches()) {
+            url = "https://" + text;
+        } else {
+            url = BrowserSettings.searchUrl(engine, text);
+        }
+        loadInTab(tab, url);
+    }
+
+    private void hideKeyboard() {
+        if (address == null) return;
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(address.getWindowToken(), 0);
+        address.clearFocus();
+    }
+
+    private void focusAddress() {
+        showBars();
+        address.requestFocus();
+        address.selectAll();
+        address.postDelayed(() -> {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(address, InputMethodManager.SHOW_IMPLICIT);
+        }, KEYBOARD_DELAY_MS);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    private void handleIntent(Intent intent) {
+        if (intent == null || !ready) return;
+        BrowserTab tab = activeTab();
+        if (tab == null) tab = newTab(false);
+        if (tab == null) return;
+        boolean internal = intent.getComponent() != null && BrowserActivity.class.getName().equals(intent.getComponent().getClassName());
+        String url = internal ? intent.getStringExtra(EXTRA_URL) : null;
+        boolean blank = tab.start && !hasPage(tab);
+        if (url != null && isWebUrl(url)) {
+            closeSwitcher();
+            if (!blank && tabs.full()) toast(BrowserTabs.MAX_TABS + " tabs are open, so the link opened in this tab");
+            if (blank || tabs.full()) loadInTab(tab, url);
+            else openInNewTab(url, true);
+            return;
+        }
+        boolean focus = intent.getBooleanExtra(EXTRA_FOCUS, false) || ACTION_SEARCH.equals(intent.getAction());
+        if (!focus) return;
+        closeSwitcher();
+        if (blank || tabs.full()) showActive();
+        else newTab(false);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (!ready || switching) {
+            pendingIntent = intent;
+            return;
+        }
+        handleIntent(intent);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (startView == null) return;
+        if (startColumn != null) {
+            ViewGroup.LayoutParams params = startColumn.getLayoutParams();
+            params.width = startWidth();
+            startColumn.setLayoutParams(params);
+        }
+        renderPins();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        resumed = true;
+        if (root == null || rendererLost) return;
+        loadSettings();
+        WebView web = activeWeb();
+        if (web != null && !startShowing()) web.onResume();
+        if (startShowing() && ready) renderPins();
+        updateBar();
+    }
+
+    @Override
+    protected void onPause() {
+        resumed = false;
+        touchDown = false;
+        hidePull();
+        WebView web = activeWeb();
+        if (web != null) web.onPause();
+        super.onPause();
+    }
+
+    @Override
+    public void onBackPressed() {
+        BrowserTab tab = activeTab();
+        if (tab == null) {
+            finish();
+            return;
+        }
+        BrowserTabs.Back action = BrowserTabs.back(switcherOpen(), address != null && address.hasFocus(), tab.start, hasPage(tab), tab.web != null && tab.web.canGoBack(), tab.fromStart, tabs.size());
+        switch (action) {
+            case CLOSE_SWITCHER:
+                closeSwitcher();
+                break;
+            case HIDE_KEYBOARD:
+                hideKeyboard();
+                break;
+            case WEB_BACK:
+                tab.web.goBack();
+                break;
+            case SHOW_START:
+                backToStart(tab);
+                break;
+            case CLOSE_TAB:
+                closeTab(tab);
+                break;
+            default:
+                finish();
+        }
+    }
+
+    private void rendererGone() {
+        if (rendererLost) return;
+        rendererLost = true;
+        ready = false;
+        forgetFillSession();
+        destroyAllWebs();
+        if (art != null) {
+            ViewGroup parent = (ViewGroup) art.getParent();
+            if (parent != null) parent.removeView(art);
+            art.destroy();
+            art = null;
+        }
+        wipe(null, null);
+        Toast.makeText(this, "A page crashed, so the browser closed", Toast.LENGTH_SHORT).show();
+        finish();
+    }
+
+    private void wipe(WebView view, Runnable done) {
+        WebStorage.getInstance().deleteAllData();
+        GeolocationPermissions.getInstance().clearAll();
+        WebViewDatabase.getInstance(this).clearHttpAuthUsernamePassword();
+        if (view != null) {
+            view.clearCache(true);
+            view.clearHistory();
+            view.clearFormData();
+            view.clearSslPreferences();
+        }
+        CookieManager cookies = CookieManager.getInstance();
+        cookies.removeAllCookies(removed -> {
+            cookies.flush();
+            if (done != null) done.run();
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (barAnimator != null) barAnimator.cancel();
+        forgetFillSession();
+        if (!rendererLost && root != null) {
+            for (BrowserTab tab : tabs.list()) if (tab.web != null) tab.web.stopLoading();
+            wipe(art, null);
+            destroyAllWebs();
+            if (art != null) {
+                ViewGroup parent = (ViewGroup) art.getParent();
+                if (parent != null) parent.removeView(art);
+                art.destroy();
+                art = null;
+            }
+        }
+        if (torMode && WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
+            try {
+                ProxyController.getInstance().clearProxyOverride(Runnable::run, () -> {});
+            } catch (Exception e) {
+            }
+        }
+        super.onDestroy();
+    }
+
+    static Intent openIntent(Context context, String url, boolean focus) {
+        Intent intent = new Intent(context, BrowserActivity.class);
+        if (url != null) intent.putExtra(EXTRA_URL, url);
+        intent.putExtra(EXTRA_FOCUS, focus);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        return intent;
+    }
+
+    static boolean supported() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.P;
+    }
+}
