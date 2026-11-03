@@ -412,10 +412,23 @@ Argon2id resists GPU guessing better than PBKDF2, and it was evaluated for Valid
 What stands in front of a password guess today:
 
 * The master password never encrypts the vault. It unwraps a random 256-bit master key, and no hash is stored, so every guess needs a stolen copy of the wrapped key and a full 600,000-round PBKDF2-SHA256 derivation, the current OWASP recommendation
-* Key files and key QRs use 1,000,000 rounds under a passphrase screened against common passwords, plus three security answers
+* Key files and key QRs use 1,000,000 rounds under a passphrase screened against common passwords, plus three additional answers
 * Day-to-day unlock is fingerprint or device PIN through Android Keystore or WebAuthn, which involves no password derivation at all
 
 Argon2id will be reconsidered if browsers add it to WebCrypto. The switch would follow the same pattern as the single-blob migration: an encrypted backup first, then conversion, verification, and rollback on any mismatch.
+
+### Why key files add three answers to the passphrase
+
+A key file or key QR carries the master key, so it gets the strongest protection Valid Vault applies anywhere: a passphrase, plus three additional answers the owner picks.
+
+Security questions have a poor reputation for good reason. Banks and websites used them to reset a forgotten password, so anyone who learned a mother's maiden name could take over the account. Valid Vault uses its answers in a different role:
+
+* The passphrase must stand on its own. It needs at least 12 characters with a letter, a number, and a symbol, it is screened against common passwords, and four or more random words are recommended
+* The passphrase and the three answers are joined into one input to a single 1,000,000-round PBKDF2-SHA256 derivation. An attacker has to guess all four together, so the answers can only add work, and the key is never weaker than the passphrase alone
+* The answers never recover, reset, or bypass anything. Nothing is stored to check them against, and a wrong answer fails exactly like a wrong passphrase, by failing to unwrap the key
+* The key file is only one half of a transfer. Without the separately exported vault file it opens nothing
+
+For comparison, Chrome and Google Password Manager export passwords as a plain CSV file, and Samsung Pass protects its export with a single password.
 
 ### Why 2FA codes live on the login
 
@@ -499,4 +512,4 @@ FSL-1.1-ALv2 - See LICENSE.md for details
 
 ---
 
-**Last Updated:** Nov 2, 2026
+**Last Updated:** Nov 3, 2026

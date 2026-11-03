@@ -25,7 +25,7 @@ The full detail is in [README.md](README.md), the plan in [ROADMAP.md](ROADMAP.m
 ## Moving between devices
 
 * **Vault QR.** One device shows the encrypted vault as an animated QR code and the other scans it.
-* **Key transfer.** The master key only leaves a device wrapped under a passphrase and three security answers, stretched with 1,000,000 rounds.
+* **Key transfer.** The master key only leaves a device wrapped under a passphrase, plus three additional answers, stretched with 1,000,000 rounds.
 * **Files.** The vault and the key export as separate encrypted files, for backups or a USB drive.
 * **Uni-Vault.** Browsers on one computer can share one encrypted vault file and stay in sync on their own.
 * **Merging.** Every merge is checked in full before anything is written, deletes carry to every device, and both devices must hold the same master key.
