@@ -457,8 +457,8 @@ Join the [Valid Vault Discord](https://discord.gg/2SP383cJs9) for release announ
 
 ## Related Projects
 
-* **Valid Blockchain:** https://github.com/HiImRook/accessible-tpi-chain
-* **Valid Symphony:** https://github.com/HiImRook/valid-symphony
+* **Valid Network:** https://github.com/validprivacy/valid-network
+* **Valid Symphony:** https://github.com/validprivacy/valid-symphony
 
 ## Contributing
 
