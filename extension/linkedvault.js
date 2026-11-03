@@ -67,7 +67,7 @@ async function saveLink(handle) {
 }
 
 async function clearLink() {
-  try { await linkOp('readwrite', (s) => s.delete(LINK_KEY)) } catch (e) {}
+  if (await getLink()) await linkOp('readwrite', (s) => s.delete(LINK_KEY))
   await chrome.storage.local.remove(['linkSyncedAt', 'linkFileSig', 'linkStatus', LAST_LINK_KEY])
 }
 

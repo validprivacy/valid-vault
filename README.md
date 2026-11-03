@@ -17,13 +17,13 @@ A local, encrypted, QR code portable password manager that works without a cloud
 
 ---
 
-> ✅ **Two-Factor Codes - v0.9.4**
->
-> A login can now hold its two-factor code, the six-digit code an authenticator app would show. Type the setup key the site gives you, or scan its QR code with the phone, and Valid Vault shows the live code with the seconds left, in Manage and in the phone app. On a site's code box, a V tag fills the current code for that login, and Android Autofill fills code boxes in apps and browsers. The setup key is sealed inside the encrypted login, travels with it in vault files and the vault QR, and never reaches a web page, which only ever receives the code. Codes are never put on the clipboard. Bitwarden, 1Password, and CSV exports bring their 2FA codes along, and a new master password is now checked against common passwords, the same way the key passphrase is. See [CHANGELOG.md](CHANGELOG.md) for full details.
-
 > ✅ **Ranked Personal Info and Sync Hardening - v0.9.4.1**
 >
 > Personal Info holds as many phone numbers, emails, and addresses as you need, ranked with the primary on top, and the V on a phone or address field lists them all in that order. Merging keeps each device's own order, adds new entries at the bottom, keeps the newest edit of each name, and carries deletes to every device. Every encrypted record is now tied to its place in the vault as AES-GCM authenticated data, so a record moved to another place fails to decrypt, and older records are upgraded and verified on unlock. A lock throws away anything still decrypting, edits made after a sync always stick, and 121 automated tests now cover clock drift, offline edits, old backups, overlapping imports, and devices on different versions. Vault files are now version 2, so update every device together. See [CHANGELOG.md](CHANGELOG.md) for full details.
+
+> ✅ **Lock and Clear Hardening - v0.9.4.3**
+>
+> Fixes from an outside source review. Locking now closes any fill list already open on a page, and a login, Personal Info value, or 2FA code that finishes decrypting after the lock is thrown away instead of filled. Clear Vault removes the browser's backup copy first and reports an error instead of success if anything could not be removed, so a cleared vault can never come back on its own. On a page without https, the extension asks before filling, the same way the phone's private browser does. The docs now describe matching and Android Autofill exactly as the code does it, and 149 automated tests cover the new behavior. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ---
 
@@ -34,7 +34,7 @@ Valid Vault is a self-hosted password manager built on a master key wrap archite
 **How unlock works:**
 
 * Password - wrapping key derived via PBKDF2-SHA256 at 600,000 iterations with a per-wrap salt, minimum 12 characters with a letter, a number, and a symbol, and common passwords refused; why PBKDF2 and not Argon2id is covered in [Design Decisions](ROADMAP.md#design-decisions)
-* Device unlock (Android) - the master key is wrapped by a hardware-backed Android Keystore key that requires device authentication (fingerprint or system PIN) to use
+* Device unlock (Android) - the master key is wrapped by an Android Keystore key, held in secure hardware on phones that have it, that requires device authentication (fingerprint or system PIN) to use
 * Device unlock (extension) - the platform authenticator via WebAuthn, covering fingerprint and the device's own PIN
 * A wrong credential makes the unwrap fail; no password hash is stored, so the only way to test a guess is to run the full key derivation
 
@@ -50,7 +50,7 @@ Your data stays on your own devices, so there is nothing on a company's server t
 
 * Master key wrap architecture - one key, independently wrapped per unlock method
 * Verify-by-unwrap - the GCM auth tag is the verifier, nothing cheaper exists in storage
-* Android: hardware-backed Keystore key gated by device authentication
+* Android: Keystore key gated by device authentication, held in the phone's secure hardware on phones that have it
 * Extension: platform authenticator (fingerprint / device PIN) via WebAuthn
 * Importing a key re-wraps it under the browser's own unlock methods, so it keeps working through every lock and unlock
 
@@ -64,6 +64,8 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * Crypto Wallets requires its own explicit unlock inside Manage, and locks itself again when you switch Manage tabs or browser tabs, or after the auto-lock time
 * Changing or deleting an unlock method and Clear Vault always ask for fingerprint, device PIN, or password again, even while the vault is unlocked
 * Mouse movement, scrolling, clicks, and typing anywhere in the browser count as activity for auto-lock; only real input counts, so a page cannot fake activity to keep the vault open
+* Locking closes any fill list already open on a page, and an entry picked from a list opened before the lock fills nothing
+* Clear Vault removes the browser's backup copy before the vault itself, and reports an error instead of success if anything could not be removed, so a cleared vault never comes back on its own
 
 **Autofill (Extension):**
 
@@ -78,6 +80,8 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * A visible field tag marks anything Valid Vault has matched
 * Logins saved on one part of a site, such as www.example.com, are offered on its other parts, such as a separate sign-in page at login.example.com, in their own labeled section; shared hosting addresses where each subdomain has a different owner are kept apart
 * Passwords are never copied to the clipboard; autofill places them directly into the field you clicked
+* On a page without https, picking a saved login, Personal Info value, or 2FA code asks first, since anything sent from that page can be read on the way
+* Saved logins are matched by the site's address, so http and https pages, and different ports, on the same address share the same logins
 * A login can hold its 2FA code; a single code box gets its own V tag that fills the current code for a login on that site, and the code is never put on the clipboard
 * Website Credentials reliably saves new logins from real signup flows, including submit-triggered navigation, cross-domain SSO/MFA redirects, and multi-form pages
 * Each saved login records its `loginType` (username, email, or phone) for more reliable matching
@@ -175,9 +179,9 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * Single-file web bundle - build.js bundles the phone app from the extension's own modules into one self-contained HTML file, so both clients share one copy of the core code
 * Android via Capacitor, with native plugins for biometric auth, file saving, autofill, sharing, and the private browser
 * Every library is vendored into the bundle, and the scan path runs without Google SDKs
-* 121 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
+* 149 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
 
-## Current Status: v0.9.4.1 - Final Bug Fixes and Polish
+## Current Status: v0.9.4.3 - Final Bug Fixes and Polish
 
 **Completed:**
 
@@ -233,11 +237,12 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * ✅ New look on the phone: day and night modes, the striped V, raised and recessed design, redrawn start page backgrounds, and day and night widgets
 * ✅ Encrypted backup copy in the extension that restores the vault after the browser clears site data
 * ✅ New look in the extension: day and night modes, the striped V, and the raised and recessed design across the popup, Manage, the bookmarks panel, the User Guide, and the V tags on websites
-* ✅ 121 automated tests for the extension and the phone app, public in the repository and run with `npm test`
+* ✅ 149 automated tests for the extension and the phone app, public in the repository and run with `npm test`
 * ✅ Deletes win same-moment conflicts on every synced section, trusted browsers checked by signing certificate, and extra fields chosen one by one in the save prompt
 * ✅ Crypto wallets travel in the vault QR with the rest of the vault
 * ✅ 2FA codes on logins: typed setup key or scanned QR, live codes in Manage and the phone app, a V tag on code boxes, Android Autofill for code boxes, and imports from Bitwarden, 1Password, and CSV
 * ✅ Ranked phone numbers and addresses, Personal Info merged entry by entry, every encrypted record tied to its place in the vault, and sync tested against clock drift, offline edits, old backups, and mixed versions
+* ✅ Open fill lists cleared on lock, Clear Vault that never leaves a recoverable copy behind, and an ask before the extension fills a page without https
 
 **Before 1.0:**
 
@@ -260,7 +265,7 @@ Recovery follows from the same model. As long as any device still unlocks the va
 **Encryption at rest:**
 
 * Passwords are wrapped with PBKDF2-SHA256 at 600,000 iterations
-* On Android, the master key is additionally wrapped by a hardware Keystore key gated on device authentication
+* On Android, the master key is additionally wrapped by an Android Keystore key gated on device authentication, held in secure hardware on phones that have it
 * The master key only leaves a device wrapped at 1,000,000 PBKDF2 iterations under a passphrase, plus three additional answers, in both the key QR and the key file; the passphrase and answers are never stored. For comparison, Chrome and Google Password Manager export passwords as a plain CSV file, and Samsung Pass protects its export with one password
 * No verification hashes are stored; the AES-GCM auth tag is the only verifier
 * Exporting, importing, or sharing a key or vault requires fingerprint, device PIN, or password first, even while the vault is unlocked
@@ -268,7 +273,7 @@ Recovery follows from the same model. As long as any device still unlocks the va
 
 **The scanner is self-contained.** It uses the web camera and a vendored jsQR decoder that runs entirely on the device, without Google's scanning libraries.
 
-**Locking is enforced end to end.** A manual or timeout lock clears the shared session key everywhere it was stored, so a locked session cannot silently resume.
+**Locking is enforced end to end.** A manual or timeout lock clears the shared session key everywhere it was stored, so a locked session cannot silently resume. Fill lists already open on a page are cleared, and anything still decrypting when the lock lands is thrown away.
 
 **Fingerprint first, password as the fallback.** Unlocking a section in Manage and editing Personal Info try fingerprint or device PIN first, the strongest local method, and fall back to the master password in a masked dialog. Importing a key offers fingerprint or device PIN first to lock the imported key, with a master password as the fallback, and changing unlock methods or clearing the vault always asks again.
 
@@ -392,13 +397,13 @@ The master key is wrapped once under a passphrase, plus three additional answers
 Crypto Wallets and Bookmarks share one small module, sealed.js, that serializes a section, deflate-compresses it, and encrypts it as one AES-GCM blob with a fresh IV per write and the section's name as authenticated data. Each section merges by permanent record IDs with tombstoned deletes, so the same vault file converges on every device.
 
 **Native Biometric (Android):**
-A custom Capacitor plugin bridges JavaScript to Android's BiometricPrompt. It creates a hardware-backed Keystore key that requires user authentication, then uses it to wrap the master key. Re-enrolling writes to a second Keystore slot and swaps it in only after the new fingerprint succeeds, so a cancelled re-enroll never breaks the working one.
+A custom Capacitor plugin bridges JavaScript to Android's BiometricPrompt. It creates an Android Keystore key that requires user authentication, held in secure hardware on phones that have it, then uses it to wrap the master key. Re-enrolling writes to a second Keystore slot and swaps it in only after the new fingerprint succeeds, so a cancelled re-enroll never breaks the working one.
 
 **Native File Saving (Android):**
 A custom Capacitor plugin writes exported files directly to the Downloads folder through Android's MediaStore API, and Capacitor's Filesystem and Share plugins back the native share option.
 
 **Android Autofill:**
-A native autofill service reads only which fields a form has, never their contents, and offers one Valid Vault entry that requires authentication. Tapping it opens a separate Valid Vault screen running the same bundled code in its own session, so the unlocked key never crosses from the main app. After fingerprint, device PIN, or password, that screen decrypts the vault, matches the site, and hands Android exactly one username and password for that form. Saving works the same way in reverse: a typed password waits in memory for at most two minutes until you confirm.
+A native autofill service reads which fields a form has, and the contents of only the username, password, and code fields it fills or offers to save, never any other field, and offers one Valid Vault entry that requires authentication. Tapping it opens a separate Valid Vault screen running the same bundled code in its own session, so the unlocked key never crosses from the main app. After fingerprint, device PIN, or password, that screen decrypts the vault, matches the site, and hands Android exactly one username and password for that form. Saving works the same way in reverse: a typed password waits in memory for at most two minutes until you confirm.
 
 **Private Browser:**
 The browser is its own Android activity running in a separate process, with the WebView's data directory split off from the vault's. Every page request is checked against Valid Vault's own tracker list and against domains taken from EasyPrivacy and EasyList, which ship as a separate data file under their own license; list domains are blocked only when the page belongs to a different site. Blocked requests get an empty response, and the elements that requested them are hidden along with standard ad slots. Main-frame navigations are cleaned of tracking tags and unwrapped from known redirect links before loading. A script at the start of every frame sets Global Privacy Control, and pages opened from the address bar also carry the Sec-GPC header. Closing the browser deletes its cookies, storage, cache, and history, and opening it clears anything left from a session Android ended early before the first page loads. Browser files are left out of Android backups.

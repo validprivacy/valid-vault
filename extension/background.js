@@ -38,22 +38,46 @@ async function getSessionKeyBytes() {
   return null
 }
 
+const LOCK_SIGNAL_KEY = 'vaultLockedAt'
+const sessionState = { epoch: 0 }
+
+function sameKeyBytes(a, b) {
+  if (!a || !b || a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+  return true
+}
+
+async function withSessionKey(usages, lockedResult, fn) {
+  const epoch = sessionState.epoch
+  const bytes = await getSessionKeyBytes()
+  if (!bytes) return lockedResult()
+  const key = await crypto.subtle.importKey('raw', new Uint8Array(bytes), { name: 'AES-GCM', length: 256 }, false, usages)
+  const result = await fn(key)
+  if (epoch !== sessionState.epoch) return lockedResult()
+  if (!sameKeyBytes(bytes, await getSessionKeyBytes())) return lockedResult()
+  return result
+}
+
+function revokeSession() {
+  sessionState.epoch++
+  try { chrome.storage.local.set({ [LOCK_SIGNAL_KEY]: Date.now() }).catch(() => {}) } catch (e) {}
+}
+
 async function getPersonalInfoRecord() {
   try { await openVaultStore() } catch (e) {}
   return readRawRecord('personalInfo', 'profile')
 }
 
 async function loadDecryptedProfile() {
-  const bytes = await getSessionKeyBytes()
-  if (!bytes) return { success: false, locked: true }
-  const record = await getPersonalInfoRecord()
-  if (!record || !record.data) return { success: true, profile: null }
-  const key = await crypto.subtle.importKey('raw', new Uint8Array(bytes), { name: 'AES-GCM', length: 256 }, false, ['decrypt'])
-  try {
-    return { success: true, profile: await openProfileRecord(record, key) }
-  } catch (e) {
-    return { success: false, locked: true }
-  }
+  return withSessionKey(['decrypt'], () => ({ success: false, locked: true }), async (key) => {
+    const record = await getPersonalInfoRecord()
+    if (!record || !record.data) return { success: true, profile: null }
+    try {
+      return { success: true, profile: await openProfileRecord(record, key) }
+    } catch (e) {
+      return { success: false, locked: true }
+    }
+  })
 }
 
 async function personalInfoField(fieldType) {
@@ -84,21 +108,21 @@ async function bindAfterUnlock(bytes) {
 }
 
 async function credentialsForDomainViaShared(domain) {
-  const bytes = await getSessionKeyBytes()
-  if (!bytes) return { success: false, credentials: [], locked: true }
-  const key = await crypto.subtle.importKey('raw', new Uint8Array(bytes), { name: 'AES-GCM', length: 256 }, false, ['decrypt'])
-  const result = await passwordsGetCredentials(domain, key)
-  if (!result.success) return { success: false, credentials: [], locked: true }
-  return { success: true, credentials: result.credentials.map(pageCredential) }
+  const locked = () => ({ success: false, credentials: [], locked: true })
+  return withSessionKey(['decrypt'], locked, async (key) => {
+    const result = await passwordsGetCredentials(domain, key)
+    if (!result.success) return locked()
+    return { success: true, credentials: result.credentials.map(pageCredential) }
+  })
 }
 
 async function relatedCredentialsViaShared(domain) {
-  const bytes = await getSessionKeyBytes()
-  if (!bytes) return { success: false, groups: [], locked: true }
-  const key = await crypto.subtle.importKey('raw', new Uint8Array(bytes), { name: 'AES-GCM', length: 256 }, false, ['decrypt'])
-  const result = await passwordsGetRelated(domain, key)
-  if (!result.success) return { success: false, groups: [], locked: true }
-  return { success: true, groups: result.groups.map((group) => ({ domain: group.domain, credentials: group.credentials.map(pageCredential) })) }
+  const locked = () => ({ success: false, groups: [], locked: true })
+  return withSessionKey(['decrypt'], locked, async (key) => {
+    const result = await passwordsGetRelated(domain, key)
+    if (!result.success) return locked()
+    return { success: true, groups: result.groups.map((group) => ({ domain: group.domain, credentials: group.credentials.map(pageCredential) })) }
+  })
 }
 
 function senderHost(sender) {
@@ -126,17 +150,18 @@ async function codeEntries(credentials, domain) {
 async function totpCodesForSender(sender) {
   const host = senderHost(sender)
   if (!host) return { success: false, codes: [], related: [] }
-  const key = await sharedKey()
-  if (!key) return { success: false, codes: [], related: [], locked: true }
-  const exact = await passwordsGetCredentials(host, key)
-  if (!exact.success) return { success: false, codes: [], related: [], locked: true }
-  const codes = await codeEntries(exact.credentials, host)
-  const related = []
-  const groups = await passwordsGetRelated(host, key)
-  if (groups.success) {
-    for (const group of groups.groups) related.push(...(await codeEntries(group.credentials, group.domain)))
-  }
-  return { success: true, codes, related }
+  const locked = () => ({ success: false, codes: [], related: [], locked: true })
+  return withSessionKey(['decrypt'], locked, async (key) => {
+    const exact = await passwordsGetCredentials(host, key)
+    if (!exact.success) return locked()
+    const codes = await codeEntries(exact.credentials, host)
+    const related = []
+    const groups = await passwordsGetRelated(host, key)
+    if (groups.success) {
+      for (const group of groups.groups) related.push(...(await codeEntries(group.credentials, group.domain)))
+    }
+    return { success: true, codes, related }
+  })
 }
 
 async function saveCredentialViaShared(domain, username, password, extraFields, loginType) {
@@ -195,6 +220,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   }
   if (request.action === 'getPersonalInfoAllEmails') {
     personalInfoAllEmails().then(sendResponse)
+    return true
+  }
+  if (request.action === 'sessionState') {
+    getSessionKeyBytes().then(function (bytes) { sendResponse({ unlocked: !!bytes }) })
     return true
   }
   if (request.action === 'persistSessionKey') {
@@ -482,7 +511,9 @@ chrome.alarms.onAlarm.addListener(function (alarm) {
 })
 
 chrome.storage.onChanged.addListener(function (changes, area) {
-  if (area === 'session' && changes.masterKeyBytes && changes.masterKeyBytes.oldValue && !changes.masterKeyBytes.newValue) clearAllPendingSaves()
+  if (area !== 'session' || !changes.masterKeyBytes || changes.masterKeyBytes.newValue) return
+  revokeSession()
+  if (changes.masterKeyBytes.oldValue) clearAllPendingSaves()
 })
 
 chrome.storage.onChanged.addListener(function (changes, area) {

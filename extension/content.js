@@ -719,7 +719,7 @@
     addPickerSection(itemsContainer, 'Saved on other parts of this site')
     for (const cred of related) {
       const icon = LOGIN_TYPE_ICON[cred.loginType || 'username'] || LOGIN_TYPE_ICON.username
-      addPickerItem(itemsContainer, cred.username + ' · ' + cred.domain, () => onPick(cred), icon)
+      addVaultItem(itemsContainer, cred.username + ' · ' + cred.domain, () => onPick(cred), icon)
     }
   }
 
@@ -852,9 +852,10 @@
   }
 
   async function refreshCachedCreds(record) {
+    const generation = vaultAccess.generation
     try {
       const result = await chrome.runtime.sendMessage({ action: 'getCredentialsForDomain', domain: currentDomain })
-      if (result && result.success) record.cachedCreds = result.credentials
+      if (result && result.success && !vaultRevokedSince(generation)) record.cachedCreds = result.credentials
     } catch (e) {}
   }
 
@@ -1294,6 +1295,34 @@
 
   let fieldPicker = null
 
+  const LOCK_SIGNAL_KEY = 'vaultLockedAt'
+  const vaultAccess = { generation: 0 }
+
+  function revokeVaultData() {
+    vaultAccess.generation++
+    for (const record of credentialForms.values()) record.cachedCreds = []
+    if (fieldPicker && fieldPicker.holdsVault) {
+      fieldPicker.holdsVault = false
+      fieldPicker.shadow.getElementById('items').innerHTML = ''
+      hideFieldPicker()
+    }
+  }
+
+  async function vaultStillUnlocked() {
+    try {
+      const r = await chrome.runtime.sendMessage({ action: 'sessionState' })
+      return !!(r && r.unlocked)
+    } catch (e) {
+      return false
+    }
+  }
+
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes[LOCK_SIGNAL_KEY]) revokeVaultData()
+    })
+  } catch (e) {}
+
   const FIELD_PICKER_TITLES = {
     email: 'Choose an email',
     firstName: 'First name',
@@ -1363,6 +1392,7 @@
     fieldPicker.shadow.getElementById('header').textContent = title
     const itemsContainer = fieldPicker.shadow.getElementById('items')
     itemsContainer.innerHTML = ''
+    fieldPicker.holdsVault = false
     fieldPicker.host.style.display = 'block'
     return itemsContainer
   }
@@ -1374,7 +1404,7 @@
     container.appendChild(section)
   }
 
-  function addPickerItem(container, text, onPick, icon) {
+  function buildPickerItem(container, text, icon) {
     const item = document.createElement('div')
     item.className = 'item'
     if (icon && PICKER_ICONS[icon]) {
@@ -1387,8 +1417,59 @@
     const label = document.createElement('span')
     label.textContent = text
     item.appendChild(label)
-    item.onclick = (e) => { if (!e.isTrusted) return; onPick(); hideFieldPicker() }
     container.appendChild(item)
+    return item
+  }
+
+  function addPickerItem(container, text, onPick, icon) {
+    const item = buildPickerItem(container, text, icon)
+    item.onclick = (e) => { if (!e.isTrusted) return; onPick(); hideFieldPicker() }
+  }
+
+  function addVaultItem(container, text, onPick, icon, insecureConfirmed) {
+    const generation = vaultAccess.generation
+    if (fieldPicker) fieldPicker.holdsVault = true
+    const item = buildPickerItem(container, text, icon)
+    let picking = false
+    item.onclick = async (e) => {
+      if (!e.isTrusted || picking) return
+      picking = true
+      try {
+        if (generation !== vaultAccess.generation) { showLockedNotice(); return }
+        const unlocked = await vaultStillUnlocked()
+        if (!unlocked || generation !== vaultAccess.generation) { showLockedNotice(); return }
+        if (!insecureConfirmed && !window.isSecureContext) { confirmInsecureFill(onPick); return }
+        onPick()
+        hideFieldPicker()
+      } finally {
+        picking = false
+      }
+    }
+  }
+
+  function showLockedNotice() {
+    revokeVaultData()
+    if (!fieldPicker) return
+    fieldPicker.shadow.getElementById('header').textContent = 'Valid Vault'
+    const container = fieldPicker.shadow.getElementById('items')
+    container.innerHTML = ''
+    addPickerEmpty(container, 'Vault is locked. Nothing was filled.')
+    fieldPicker.host.style.display = 'block'
+    pickerAutoHideTimer = setTimeout(hideFieldPicker, GENERATE_NOTE_MS)
+  }
+
+  function confirmInsecureFill(onPick) {
+    if (!fieldPicker) return
+    fieldPicker.shadow.getElementById('header').textContent = 'This page isn\'t secure'
+    const container = fieldPicker.shadow.getElementById('items')
+    container.innerHTML = ''
+    addPickerEmpty(container, 'This page is not using https, so anything sent from it can be read on the way. Fill anyway?')
+    addVaultItem(container, 'Fill anyway', onPick, null, true)
+    addPickerItem(container, 'Cancel', () => {})
+  }
+
+  function vaultRevokedSince(generation) {
+    return generation !== vaultAccess.generation
   }
 
   function addPickerEmpty(container, text) {
@@ -1400,14 +1481,17 @@
 
   async function showFieldPicker(field, fieldType) {
     const itemsContainer = openPicker(field, 'Valid Vault: ' + (FIELD_PICKER_TITLES[fieldType] || 'Fill'))
+    let generation = vaultAccess.generation
     let result = await fetchPickerValues(fieldType)
     if (result.locked) {
       const unlocked = await unlockInline()
+      generation = vaultAccess.generation
       if (unlocked) result = await fetchPickerValues(fieldType)
     }
+    if (vaultRevokedSince(generation)) result = { locked: true, values: [] }
     itemsContainer.innerHTML = ''
     if (result.values.length > 0) {
-      result.values.forEach((value) => addPickerItem(itemsContainer, value, () => fillFieldValue(field, value)))
+      result.values.forEach((value) => addVaultItem(itemsContainer, value, () => fillFieldValue(field, value)))
     } else {
       addPickerEmpty(itemsContainer, result.locked ? 'Vault is locked' : 'Nothing saved for this field. Add it in Personal Info.')
     }
@@ -1428,11 +1512,14 @@
 
   async function showLoginPicker(field, formFields) {
     const itemsContainer = openPicker(field, 'Valid Vault')
+    let generation = vaultAccess.generation
     let data = await fetchLoginPickerData(field)
     if (data.locked) {
       const unlocked = await unlockInline()
+      generation = vaultAccess.generation
       if (unlocked) data = await fetchLoginPickerData(field)
     }
+    if (vaultRevokedSince(generation)) data = { locked: true, credentials: [], related: [], emails: [] }
     itemsContainer.innerHTML = ''
     const targetType = classifyLoginType(field)
     const ranked = data.credentials
@@ -1447,14 +1534,14 @@
       addPickerSection(itemsContainer, 'Saved logins for this site')
       for (const cred of ranked) {
         const icon = LOGIN_TYPE_ICON[cred.loginType || 'username'] || LOGIN_TYPE_ICON.username
-        addPickerItem(itemsContainer, cred.username, () => fillCredentials(cred, formFields), icon)
+        addVaultItem(itemsContainer, cred.username, () => fillCredentials(cred, formFields), icon)
       }
     }
     const withPrevious = ranked.filter((cred) => cred.previousPassword)
     if (withPrevious.length > 0) {
       addPickerSection(itemsContainer, 'Previous passwords')
       for (const cred of withPrevious) {
-        addPickerItem(itemsContainer, cred.username + ' (replaced ' + shortDate(cred.previousSetAt) + (cred.previousUntil ? ', kept until ' + shortDate(cred.previousUntil) : '') + ')', () => {
+        addVaultItem(itemsContainer, cred.username + ' (replaced ' + shortDate(cred.previousSetAt) + (cred.previousUntil ? ', kept until ' + shortDate(cred.previousUntil) : '') + ')', () => {
           fillCredentials({ username: cred.username, password: cred.previousPassword, extraFields: [], isPrevious: true }, formFields)
           setTimeout(() => offerRestore(field, cred), 0)
         }, 'history')
@@ -1463,7 +1550,7 @@
     addRelatedSection(itemsContainer, data.related, (cred) => fillCredentials(cred, formFields))
     if (data.emails.length > 0) {
       addPickerSection(itemsContainer, 'Your emails')
-      for (const email of data.emails) addPickerItem(itemsContainer, email, () => fillFieldValue(field, email), 'mail')
+      for (const email of data.emails) addVaultItem(itemsContainer, email, () => fillFieldValue(field, email), 'mail')
     }
     if (ranked.length === 0 && data.related.length === 0 && data.emails.length === 0) {
       addPickerEmpty(itemsContainer, data.locked ? 'Vault is locked' : 'No saved logins for this site yet. Log in or sign up and Valid Vault will offer to save it.')
@@ -1478,23 +1565,36 @@
     const itemsContainer = openPicker(field, 'Valid Vault: Previous password filled')
     addPickerEmpty(itemsContainer, 'Use this if the newer password for ' + cred.username + ' did not work, for example if a password change failed.')
     addPickerItem(itemsContainer, 'Make this the current password again', async () => {
-      try { await chrome.runtime.sendMessage({ action: 'restorePreviousPassword', domain: currentDomain, username: cred.username }) } catch (e) {}
+      let result = null
+      try { result = await chrome.runtime.sendMessage({ action: 'restorePreviousPassword', domain: currentDomain, username: cred.username }) } catch (e) {}
+      if (result && result.success) return
+      const notice = openPicker(field, 'Valid Vault: Previous password')
+      addPickerEmpty(notice, result && result.locked ? 'Vault is locked, so nothing was changed. Unlock and try again.' : 'Could not make it the current password' + (result && result.error ? ': ' + result.error : '') + '. Nothing was changed.')
+      pickerAutoHideTimer = setTimeout(hideFieldPicker, GENERATE_NOTE_MS)
     })
     addPickerItem(itemsContainer, 'Keep the newer saved password', () => {})
   }
 
   async function showCurrentPicker(field, record) {
     const itemsContainer = openPicker(field, 'Valid Vault: Current password')
+    let generation = vaultAccess.generation
     let result = null
     try { result = await chrome.runtime.sendMessage({ action: 'getCredentialsForDomain', domain: currentDomain }) } catch (e) {}
     if (result && result.locked) {
       const unlocked = await unlockInline()
+      generation = vaultAccess.generation
       if (unlocked) { try { result = await chrome.runtime.sendMessage({ action: 'getCredentialsForDomain', domain: currentDomain }) } catch (e) {} }
     }
+    if (vaultRevokedSince(generation)) result = { success: false, locked: true, credentials: [] }
     itemsContainer.innerHTML = ''
     const creds = (result && result.success && result.credentials) || []
     record.cachedCreds = creds
     const related = result && result.success ? await fetchRelatedLogins() : []
+    if (vaultRevokedSince(generation)) {
+      record.cachedCreds = []
+      addPickerEmpty(itemsContainer, 'Vault is locked')
+      return
+    }
     if (creds.length === 0 && related.length > 0) {
       addRelatedSection(itemsContainer, related, (cred) => {
         record.accountUsername = cred.username
@@ -1510,7 +1610,7 @@
     addPickerSection(itemsContainer, 'Fill your current password')
     for (const cred of creds) {
       const icon = LOGIN_TYPE_ICON[cred.loginType || 'username'] || LOGIN_TYPE_ICON.username
-      addPickerItem(itemsContainer, cred.username, () => {
+      addVaultItem(itemsContainer, cred.username, () => {
         record.accountUsername = cred.username
         fillFieldValue(field, cred.password)
         noteCredentialUse(cred.username)
@@ -1520,7 +1620,7 @@
     if (withPrevious.length > 0) {
       addPickerSection(itemsContainer, 'Previous passwords')
       for (const cred of withPrevious) {
-        addPickerItem(itemsContainer, cred.username + ' (replaced ' + shortDate(cred.previousSetAt) + (cred.previousUntil ? ', kept until ' + shortDate(cred.previousUntil) : '') + ')', () => {
+        addVaultItem(itemsContainer, cred.username + ' (replaced ' + shortDate(cred.previousSetAt) + (cred.previousUntil ? ', kept until ' + shortDate(cred.previousUntil) : '') + ')', () => {
           record.accountUsername = cred.username
           fillFieldValue(field, cred.previousPassword)
           setTimeout(() => offerRestore(field, cred), 0)
@@ -1535,28 +1635,33 @@
 
   async function fillFreshCode(field, entry) {
     const result = await fetchTotpCodes()
-    const all = result && result.success ? (result.codes || []).concat(result.related || []) : []
+    if (result && result.locked) { showLockedNotice(); return }
+    if (!result || !result.success) return
+    const all = (result.codes || []).concat(result.related || [])
     const fresh = all.find((c) => c.username === entry.username && c.domain === entry.domain)
     fillFieldValue(field, fresh ? fresh.code : entry.code)
   }
 
   async function showOtpPicker(field) {
     const itemsContainer = openPicker(field, 'Valid Vault: 2FA code')
+    let generation = vaultAccess.generation
     let result = await fetchTotpCodes()
     if (result && result.locked) {
       const unlocked = await unlockInline()
+      generation = vaultAccess.generation
       if (unlocked) result = await fetchTotpCodes()
     }
+    if (vaultRevokedSince(generation)) result = { success: false, locked: true, codes: [], related: [] }
     itemsContainer.innerHTML = ''
     const codes = (result && result.success && result.codes) || []
     const related = (result && result.success && result.related) || []
     if (codes.length) {
       addPickerSection(itemsContainer, 'Codes for this site')
-      for (const entry of codes) addPickerItem(itemsContainer, entry.username, () => fillFreshCode(field, entry), 'clock')
+      for (const entry of codes) addVaultItem(itemsContainer, entry.username, () => fillFreshCode(field, entry), 'clock')
     }
     if (related.length) {
       addPickerSection(itemsContainer, 'Codes saved on other parts of this site')
-      for (const entry of related) addPickerItem(itemsContainer, entry.username + ' on ' + entry.domain, () => fillFreshCode(field, entry), 'clock')
+      for (const entry of related) addVaultItem(itemsContainer, entry.username + ' on ' + entry.domain, () => fillFreshCode(field, entry), 'clock')
     }
     if (!codes.length && !related.length) {
       addPickerEmpty(itemsContainer, result && result.locked ? 'Vault is locked' : 'No 2FA code saved for this site. Add the setup key to this login in Manage to fill codes here.')

@@ -1,10 +1,22 @@
 # Valid Vault - Development Roadmap
 
-**Current Version:** v0.9.4.2 - **Status: Late Beta**
+**Current Version:** v0.9.4.3 - **Status: Late Beta**
 
 ---
 
 ## Version History (Completed)
+
+### v0.9.4.3 - Lock and Clear Hardening (Nov 2026)
+
+* ✅ Locking closes any fill list already open on a page, and an entry picked from one fills nothing
+* ✅ Logins, Personal Info, and 2FA codes that finish decrypting after a lock are thrown away before they reach the page
+* ✅ Clear Vault removes the backup copy before the vault, and reports an error instead of success if anything is left
+* ✅ Unlinking a vault file reports a failure instead of claiming success
+* ✅ The extension asks before filling a page without https, the same as the private browser
+* ✅ A failed restore of a previous password, and key protection that could not be saved after a key import, are reported
+* ✅ Third-party notices for jsQR and the EasyList domain list
+* ✅ Docs corrected on how logins are matched, what Android Autofill reads, and where the Keystore key is held
+* ✅ 149 automated tests
 
 ### v0.9.4.2 - A New Home (Nov 2026)
 
@@ -357,7 +369,7 @@
 
 ---
 
-## Upcoming After v0.9.4.2
+## Upcoming After v0.9.4.3
 
 ### Before 1.0
 
@@ -445,7 +457,7 @@ Android's Safe Browsing service checks pages through Google Play services and co
 
 What covers the gap:
 
-* Logins fill only on the exact site they were saved for, matched by scheme, address, and port, so a look-alike phishing page never gets a login. Against phishing, this is the protection that matters most in a password manager
+* Logins fill only on the site address they were saved for, so a look-alike phishing page never gets a login, and the browser checks that the tab is still on the same scheme, address, and port before it fills. Against phishing, this is the protection that matters most in a password manager
 * Ad and tracker scripts from other sites, a common route for malicious ads, are blocked by the EasyList and EasyPrivacy domain lists and Valid Vault's own list, all stored on the phone
 * Downloads always ask first and are off in Tor mode, and pages without https ask before a login fills
 * For a site you are unsure of, any browser with Safe Browsing, such as Chrome, still fills from Valid Vault through Android Autofill
@@ -467,6 +479,16 @@ Deleting a login, misc credential, bookmark, wallet account, phone number, email
 * An old backup, or a device that saved the same phone number or email on its own, cannot bring a deleted Personal Info entry back
 * Markers never expire. Each is under a hundred bytes inside an encrypted blob, and an expiry would let a device that stayed offline past the cutoff bring deleted items back on its next sync
 
+### Why Clear Vault removes the backup copy first
+
+The extension keeps an encrypted backup copy of the vault in browser storage, so the vault comes back if the browser clears site data. On start, a vault with no unlock record is restored from that copy. Clear Vault used to remove the vault first and the backup copy second, so a crash or storage error between the two could bring a cleared vault back on the next start.
+
+* The backup copy is removed first and checked to be gone, then the vault itself is cleared
+* If the backup copy cannot be removed, nothing else is touched and Clear Vault reports an error
+* If clearing the vault fails after the backup copy is gone, the vault is still there and visible, the backup copy is rebuilt from it on the next start, and Clear Vault reports an error
+* A crash at any point leaves either the whole vault or nothing, never a vault that was reported cleared and comes back later
+* A marker saying a clear is pending was considered and left out. If a marker could not be removed, every later start would clear the vault again, including a new vault set up afterward
+
 ---
 
 ## Known Limitations
@@ -478,6 +500,12 @@ Deleting a login, misc credential, bookmark, wallet account, phone number, email
 ⚠️ **Auto-lock is a foreground inactivity timer** on the phone - exact timing while backgrounded is subject to OS suspension
 
 ⚠️ **SSN and card storage deliberately deferred**, pending security work
+
+⚠️ **Saved logins are matched by site address** - http and https pages, and different ports, on the same address share the same logins. The extension and the private browser ask before filling a page without https, and Android Autofill in other browsers relies on that browser's own warnings
+
+⚠️ **The unlocked phone app can appear in the recent apps preview** - the autofill screen is hidden from screenshots and previews, the main app and the private browser are not yet
+
+⚠️ **Tor mode checks that a proxy answers on Orbot's port** - it confirms a SOCKS5 proxy at 127.0.0.1:9050, not that the proxy is Orbot or that it is connected to Tor
 
 
 ⚠️ **Android Autofill needs a setting in Chrome** - Chrome needs its Autofill using another service setting turned on, and browsers without support for third-party autofill do not ask Valid Vault at all
@@ -512,4 +540,4 @@ FSL-1.1-ALv2 - See LICENSE.md for details
 
 ---
 
-**Last Updated:** Nov 3, 2026
+**Last Updated:** Nov 2, 2026

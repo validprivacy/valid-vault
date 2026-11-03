@@ -68,14 +68,27 @@ async function mirrorRemove(storeName, id) {
   try { await chrome.storage.local.remove(mirrorKey(storeName, id)) } catch (e) {}
 }
 
+async function mirrorKeysFor(names) {
+  const all = await chrome.storage.local.get(null)
+  const prefixes = names.map((name) => MIRROR_PREFIX + name + ':')
+  return Object.keys(all || {}).filter((key) => prefixes.some((prefix) => key.startsWith(prefix)))
+}
+
 async function mirrorClear(names) {
   if (!mirrorAvailable()) return
-  try {
-    const all = await chrome.storage.local.get(null)
-    const prefixes = names.map((name) => MIRROR_PREFIX + name + ':')
-    const keys = Object.keys(all || {}).filter((key) => prefixes.some((prefix) => key.startsWith(prefix)))
-    if (keys.length) await chrome.storage.local.remove(keys)
-  } catch (e) {}
+  const keys = await mirrorKeysFor(names)
+  if (keys.length) await chrome.storage.local.remove(keys)
+  if ((await mirrorKeysFor(names)).length) throw new Error('The backup copy in browser storage could not be removed')
+}
+
+function clearDatabaseStores(database, names) {
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(names, 'readwrite')
+    for (const storeName of names) tx.objectStore(storeName).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error)
+  })
 }
 
 function readAllRecords(database, storeName) {
@@ -336,14 +349,13 @@ const VAULT_DATA_STORES = ['passwords', 'webcreds', 'personalInfo', 'vaultMigrat
 
 async function clearStores(names) {
   const database = await openDB()
-  await new Promise((resolve, reject) => {
-    const tx = database.transaction(names, 'readwrite')
-    for (const storeName of names) tx.objectStore(storeName).clear()
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-    tx.onabort = () => reject(tx.error)
-  })
   await mirrorClear(names)
+  try {
+    await clearDatabaseStores(database, names)
+  } catch (error) {
+    try { await chrome.storage.local.remove(MIRROR_READY_KEY) } catch (e) {}
+    throw error
+  }
 }
 
 async function clearAll() {

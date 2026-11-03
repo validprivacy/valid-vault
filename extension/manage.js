@@ -1056,8 +1056,13 @@ btnClearVault.onclick = async () => {
   const confirm2 = await confirmDialog({ title: 'Final confirmation', text: 'This will delete everything. Continue?', okLabel: 'Clear Vault', danger: true })
 
   if (confirm2) {
-    await uniVault.clearLink()
-    await store.clearAll()
+    try {
+      await uniVault.clearLink()
+      await store.clearAll()
+    } catch (e) {
+      showMsg(msgSettings, 'Clear Vault did not finish: ' + (e && e.message ? e.message : e) + '. Run Clear Vault again. Anything already removed stays removed.', 'error')
+      return
+    }
     await session.lockAll()
     await session.clearStorageSession()
     showMsg(msgSettings, 'Vault cleared. Redirecting to setup...', 'success')
@@ -1561,7 +1566,13 @@ if (btnUniVaultReconnect) btnUniVaultReconnect.onclick = async () => {
 
 if (btnUniVaultUnlink) btnUniVaultUnlink.onclick = async () => {
   if (!(await confirmDialog({ title: 'Unlink vault file', text: 'Unlink this browser from the vault file? This browser keeps its own copy of everything. The file is not deleted.', okLabel: 'Unlink' }))) return
-  await uniVault.clearLink()
+  try {
+    await uniVault.clearLink()
+  } catch (e) {
+    syncMsg('Could not unlink the vault file: ' + (e && e.message ? e.message : e) + '. Try again.', 'error')
+    refreshUniVault()
+    return
+  }
   syncMsg('Unlinked. This browser keeps its own copy.', 'success')
   refreshUniVault()
 }
@@ -1641,7 +1652,11 @@ async function acceptKeyPackage(pkg, sourceLabel) {
   const newKey = !(await keypackage.isSameKey(session.getMasterKey(), importedKey))
   const adopted = await adoptImportedKey(importedKey)
   if (adopted) {
-    try { await keypackage.savePackage(importedKey, pkg, newKey) } catch (e) {}
+    try {
+      await keypackage.savePackage(importedKey, pkg, newKey)
+    } catch (e) {
+      syncMsg('The key was imported, but its key protection could not be saved on this browser. Set it again with Change Key Passphrase before sharing the key.', 'error')
+    }
     const nickInput = document.getElementById('key-nickname-input')
     if (nickInput) nickInput.value = await keypackage.getNickname()
   }

@@ -5,6 +5,28 @@ All notable changes to Valid Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4.3] - 2026-11-03
+
+Fixes from an outside source review of 0.9.4.2. The review found no problem in the encryption, the key transfer, migration, or sync. It found a lock that did not reach fill lists already open on a page, a Clear Vault that could bring a cleared vault back after a crash, no https check on extension fills, and docs that claimed more than the code does. All of those are fixed here, with tests.
+
+### Fixed
+
+* **Locking reaches open fill lists.** In the extension, locking now closes any fill list already open on a page and clears what it held, including logins, Personal Info values, 2FA codes, and logins remembered for a change password form. An entry picked from a list opened before the lock fills nothing and says the vault is locked, every pick checks the vault is still unlocked first, and a 2FA code is never filled from a list after a lock.
+* **Nothing decrypted after a lock reaches a page.** A login, Personal Info value, or 2FA code that finishes decrypting after the vault locks is thrown away in the extension's background instead of being sent to the page.
+* **Clear Vault cannot bring a cleared vault back.** The extension's backup copy in browser storage is now removed first and checked to be gone before the vault itself is cleared. Before, a crash or storage error between the two steps could leave the backup copy behind, and the next start restored the vault from it. If anything cannot be removed, Clear Vault now reports an error instead of success, and if clearing stops partway, the backup copy is rebuilt from the vault on the next start.
+* **Unlinking a vault file reports failures.** Unlink and Clear Vault stop with an error if the link to a linked vault file cannot be removed, instead of reporting success and leaving the link behind. With no file linked, a damaged link store never blocks Clear Vault.
+* **Failed actions are reported.** Making a previous password current again says so if it fails or the vault is locked, and a key import says so if its key protection could not be saved on this browser.
+
+### Added
+
+* **An ask before filling a page without https.** On a page without https, picking a saved login, Personal Info value, or 2FA code in the extension asks first, since anything sent from the page can be read on the way, the same as the phone's private browser.
+* **Third-party notices.** THIRD_PARTY_NOTICES.txt names jsQR 1.4.0 and its Apache 2.0 license, which ship in the extension and the phone app, and points to the EasyList notice for the private browser's domain list.
+* **28 more automated tests,** for 149 in all: locking with a fill list open, a pick after a lock the page never heard about, logins arriving after the lock signal, logins, related logins, Personal Info, and 2FA codes that finish decrypting after a lock, a lock and unlock during a decrypt, the unlocked state check, a failed previous password restore, Clear Vault when the backup copy, the vault, or the vault file link cannot be removed, a partial clear rebuilding the backup copy, Unlink failures, and the https ask with Fill anyway and Cancel. Each new test was checked to fail with its fix removed.
+
+### Changed
+
+* **Docs match the code.** Saved logins are matched by site address, so http and https pages and different ports on the same address share logins, and the private browser checks the tab's scheme, address, and port before it fills. Android Autofill reads the contents of only the username, password, and code fields it fills or offers to save. The Android Keystore key is held in secure hardware on phones that have it. Known Limitations now list address matching, the recent apps preview on the phone, and what the Tor mode check confirms.
+
 ## [0.9.4.2] - 2026-11-02
 
 Valid Vault has a new home under Valid Privacy.
