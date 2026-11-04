@@ -1,19 +1,42 @@
 Third-party software in Valid Vault
 
-Valid Vault is licensed under FSL-1.1-ALv2, see LICENSE.md. The software below is included under its own license.
+Valid Vault is licensed under FSL-1.1-ALv2, see LICENSE.md. The software and data below are included under their own terms.
 
-jsQR 1.4.0
+1. jsQR 1.4.0
 Reads QR codes from the camera and from image files, on the device.
 Files: extension/jsqr.js, and the same file bundled into www/index.html for the phone app
+Copyright Cosmo Wolfe
 Source: https://github.com/cozmo/jsQR
 Package: https://www.npmjs.com/package/jsqr, dist/jsQR.js, unmodified
-License: Apache License, Version 2.0, reproduced in full below.
+License: Apache License, Version 2.0, reproduced in full in section A below.
 
-EasyList and EasyPrivacy domain list
+2. QR code generator (qrcode-svg 1.1.0, based on qrcodejs and QRCode for JavaScript)
+Draws the QR codes Valid Vault shows for vault and key transfer.
+Files: extension/qrcode.js, and the same code bundled into www/index.html for the phone app
+Copyright (c) 2009 Kazuhiko Arase, QRCode for JavaScript, http://www.d-project.com/
+Copyright (c) 2012 davidshimjs, qrcodejs, https://github.com/davidshimjs/qrcodejs
+Copyright (c) 2016 papnkukn, qrcode-svg, https://github.com/papnkukn/qrcode-svg
+Changes: lib/qrcode.js from qrcode-svg 1.1.0, changed to accept raw bytes, to export as an ES module, and to drop the Node.js file writer.
+License: MIT License, reproduced in full in section B below.
+
+3. BIP-39 English word list
+Checks crypto wallet seed words on the device.
+File: extension/bip39-words.js, and the same list bundled into www/index.html for the phone app
+Source: Bitcoin Improvement Proposal 39, https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt
+The 2048 words are reproduced as the standard defines them. BIP-39 does not state a license.
+
+4. Fingerprint icon from Phosphor Icons
+Used on the fingerprint unlock buttons in the extension's popup, Manage, and unlock window.
+Copyright (c) 2023 Phosphor Icons, https://phosphoricons.com/
+License: MIT License, reproduced in full in section B below.
+
+5. EasyList and EasyPrivacy domain list
 Blocks ad and tracker domains in the phone app's private browser.
 File: android/app/src/main/assets/browser/easylist-domains.txt
 License, source, and changes: android/app/src/main/assets/browser/EASYLIST-NOTICE.txt
 
+--------------------------------------------------------------------------------
+A. Apache License, Version 2.0 (jsQR)
 --------------------------------------------------------------------------------
 
                                  Apache License
@@ -218,3 +241,30 @@ License, source, and changes: android/app/src/main/assets/browser/EASYLIST-NOTIC
    See the License for the specific language governing permissions and
    limitations under the License.
 
+
+--------------------------------------------------------------------------------
+B. MIT License (QR code generator and Phosphor Icons)
+--------------------------------------------------------------------------------
+
+Copyright (c) 2009 Kazuhiko Arase
+Copyright (c) 2012 davidshimjs
+Copyright (c) 2016 papnkukn
+Copyright (c) 2023 Phosphor Icons
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

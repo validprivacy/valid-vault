@@ -20,7 +20,7 @@ Fixes from an outside source review of 0.9.4.2. The review found no problem in t
 ### Added
 
 * **An ask before filling a page without https.** On a page without https, picking a saved login, Personal Info value, or 2FA code in the extension asks first, since anything sent from the page can be read on the way, the same as the phone's private browser.
-* **Third-party notices.** THIRD_PARTY_NOTICES.txt names jsQR 1.4.0 and its Apache 2.0 license, which ship in the extension and the phone app, and points to the EasyList notice for the private browser's domain list.
+* **Third-party notices.** THIRD_PARTY_NOTICES.txt ships in the extension and the phone app with the full license texts for jsQR 1.4.0 (Apache 2.0), the QR code generator (MIT, Kazuhiko Arase, davidshimjs, and papnkukn), and the Phosphor fingerprint icon (MIT), plus the source of the BIP-39 word list and a pointer to the EasyList notice for the private browser's domain list.
 * **28 more automated tests,** for 149 in all: locking with a fill list open, a pick after a lock the page never heard about, logins arriving after the lock signal, logins, related logins, Personal Info, and 2FA codes that finish decrypting after a lock, a lock and unlock during a decrypt, the unlocked state check, a failed previous password restore, Clear Vault when the backup copy, the vault, or the vault file link cannot be removed, a partial clear rebuilding the backup copy, Unlink failures, and the https ask with Fill anyway and Cancel. Each new test was checked to fail with its fix removed.
 
 ### Changed

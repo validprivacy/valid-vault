@@ -501,10 +501,11 @@ Valid Vault is licensed under the Functional Source License, Version 1.1, with A
 * Each version becomes available under the Apache License, Version 2.0 two years after it is released.
 * The Valid Vault name and logo are not covered by the license.
 
-Third-party code keeps its own license:
+Third-party code keeps its own license. Full notices and license texts are in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt), which also ships inside the extension and the phone app:
 
-* jsQR (extension/jsqr.js), copyright Cosmo Wolfe, under the Apache License, Version 2.0 (https://github.com/cozmo/jsQR).
-* QR Code Generator for JavaScript (extension/qrcode.js), copyright (c) 2009 Kazuhiko Arase, under the MIT License.
+* jsQR 1.4.0 (extension/jsqr.js), copyright Cosmo Wolfe, under the Apache License, Version 2.0 (https://github.com/cozmo/jsQR).
+* QR code generator (extension/qrcode.js), qrcode-svg 1.1.0 by papnkukn, based on qrcodejs by davidshimjs and QRCode for JavaScript, copyright (c) 2009 Kazuhiko Arase, under the MIT License.
+* The BIP-39 English word list (extension/bip39-words.js), from Bitcoin Improvement Proposal 39, which states no license.
 
 The browser's EasyPrivacy and EasyList domain file, android/app/src/main/assets/browser/easylist-domains.txt, comes from the EasyList authors (https://easylist.to/) and keeps its own GPLv3 or CC BY-SA 3.0 license, described in EASYLIST-NOTICE.txt beside it.
 

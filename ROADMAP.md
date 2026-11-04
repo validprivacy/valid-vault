@@ -14,7 +14,7 @@
 * ✅ Unlinking a vault file reports a failure instead of claiming success
 * ✅ The extension asks before filling a page without https, the same as the private browser
 * ✅ A failed restore of a previous password, and key protection that could not be saved after a key import, are reported
-* ✅ Third-party notices for jsQR and the EasyList domain list
+* ✅ Third-party notices for jsQR, the QR code generator, the BIP-39 word list, the Phosphor fingerprint icon, and the EasyList domain list
 * ✅ Docs corrected on how logins are matched, what Android Autofill reads, and where the Keystore key is held
 * ✅ 149 automated tests
 
