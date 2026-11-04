@@ -33,6 +33,7 @@ License: MIT License, reproduced in full in section B below.
 5. EasyList and EasyPrivacy domain list
 Blocks ad and tracker domains in the phone app's private browser.
 File: android/app/src/main/assets/browser/easylist-domains.txt
+Snapshot taken on 2026-10-16. It ships inside the signed Android app and is never downloaded at runtime.
 License, source, and changes: android/app/src/main/assets/browser/EASYLIST-NOTICE.txt
 
 --------------------------------------------------------------------------------

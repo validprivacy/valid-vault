@@ -1,10 +1,20 @@
 # Valid Vault - Development Roadmap
 
-**Current Version:** v0.9.4.3 - **Status: Late Beta**
+**Current Version:** v0.9.4.4 - **Status: Late Beta**
 
 ---
 
 ## Version History (Completed)
+
+### v0.9.4.4 - Tested in the Open (Nov 2026)
+
+* ✅ The full test suite runs on every push on GitHub Actions, with a check that the phone bundle matches the source and a dependency audit
+* ✅ Fuzz tests for vault files, the vault QR payload, key files, and QR frames
+* ✅ SECURITY.md with private reporting, scope, and response times
+* ✅ Capacitor updated to 7.6.10 for a WebView navigation fix, and build tool dependencies updated
+* ✅ A self-custody section in the README and a design decision on why you are the custodian of your vault
+* ✅ Login phishing protection described as needing no block list, and the EasyList snapshot dated in its notice
+* ✅ 174 automated tests
 
 ### v0.9.4.3 - Lock and Clear Hardening (Nov 2026)
 
@@ -373,10 +383,11 @@
 
 ---
 
-## Upcoming After v0.9.4.3
+## Upcoming After v0.9.4.4
 
 ### Before 1.0
 
+* Refresh the EasyList and EasyPrivacy snapshot with each release, and note its date in the notice
 * Bring the new look to the website
 * Filling apps that Android Autofill can't reach
 * Scanner reliability across more phones and cameras, tuned from what the live readout shows
@@ -431,7 +442,7 @@ What stands in front of a password guess today:
 * Key files and key QRs use 1,000,000 rounds under a passphrase screened against common passwords, plus three additional answers
 * Day-to-day unlock is fingerprint or device PIN through Android Keystore or WebAuthn, which involves no password derivation at all
 
-Argon2id will be reconsidered if browsers add it to WebCrypto. The switch would follow the same pattern as the single-blob migration: an encrypted backup first, then conversion, verification, and rollback on any mismatch.
+A switch would also bring migration, compatibility, and performance costs, and another cryptographic implementation to test, so it waits for a demonstrated benefit that outweighs them. Argon2id will be reconsidered if browsers add it to WebCrypto. The switch would follow the same pattern as the single-blob migration: an encrypted backup first, then conversion, verification, and rollback on any mismatch.
 
 ### Why key files add three answers to the passphrase
 
@@ -462,10 +473,10 @@ Android's Safe Browsing service checks pages through Google Play services and co
 
 The browser replaces it with its own protection, built around what a password manager's browser needs most:
 
-* **Logins fill only on the site address they were saved for.** A look-alike phishing page has a different address and gets nothing, and the browser checks that the tab is still on the same scheme, address, and port before it fills. For a password manager, this is the protection that matters most against phishing
+* **Logins fill only on the site address they were saved for.** A look-alike phishing page has a different address and gets nothing, including one registered minutes ago, since this check needs no list of bad sites, and the browser checks that the tab is still on the same scheme, address, and port before it fills. For a password manager, this is the protection that matters most against phishing
 * **Every fill asks for fingerprint, device PIN, or password,** and only the one login you pick is handed to the page
 * **Pages without https ask before anything fills,** and Tor mode refuses to fill them at all
-* **Malicious ads and trackers are blocked** by the EasyList and EasyPrivacy domain lists and Valid Vault's own list, all stored on the phone, cutting off a common route for malware served through ad networks
+* **Malicious ads and trackers are blocked** by the EasyList and EasyPrivacy domain lists and Valid Vault's own list, shipped inside the signed app and never downloaded at runtime, cutting off a common route for malware served through ad networks
 * **Downloads always ask first,** showing the file name and size, and are off in Tor mode
 * **Nothing persists.** Cookies, site data, cache, and history are wiped when the browser closes, and third-party cookies are blocked
 * **It runs in its own process with its own storage,** so a page in the browser never touches the vault
@@ -499,6 +510,16 @@ The extension keeps an encrypted backup copy of the vault in browser storage, so
 * If clearing the vault fails after the backup copy is gone, the vault is still there and visible, the backup copy is rebuilt from it on the next start, and Clear Vault reports an error
 * A crash at any point leaves either the whole vault or nothing, never a vault that was reported cleared and comes back later
 * A marker saying a clear is pending was considered and left out. If a marker could not be removed, every later start would clear the vault again, including a new vault set up afterward
+
+### Why you are the custodian of your vault
+
+Valid Vault has no server by design, so the vault lives only where its owner keeps it. Redundancy comes from devices and copies: each device is a live copy, each vault file on a drive or in a safe is a cold copy, and any unlocked device can write a fresh vault file and key file at any time.
+
+* There is no central store of vaults to breach, no account to lock, no subscription to lapse, and no provider who can be compelled to hand anything over
+* The owner decides how many copies exist and where they live
+* A vault is lost only when every device, every vault file, and every way to open the key are lost together. Keeping more than one copy is the owner's side of the arrangement, and the User Guide walks through it
+
+The README's [You Are the Custodian](README.md#you-are-the-custodian) section explains this for users.
 
 ### Why sync follows each device's clock and does not try to correct it
 

@@ -13,3 +13,7 @@ https://easylist.to/pages/licence.html
 
 Changes: only plain domain rules were kept, other rule types were dropped, and the entries were sorted.
 Lines starting with @@ are exceptions taken from the allowlists.
+
+Snapshot: taken from the commit above on 2026-10-16, for Valid Vault 0.8.5.
+The list ships inside the signed Android app and changes only with an app release, so Android's check of the app signature also covers the list. The browser never downloads block lists.
+This list blocks ads and trackers. Protection against login phishing does not depend on it: logins fill only on the site address they were saved for.

@@ -22,7 +22,7 @@ This page says what Valid Vault is built to protect against, what it deliberatel
 | A stolen key file or key QR | The key inside is wrapped under a passphrase that must stand on its own (16 or more characters with a letter, a number, and a symbol, screened against common passwords) plus three additional answers, stretched through 1,000,000 PBKDF2-SHA256 rounds. Nothing is stored to check a guess against |
 | Tampered or swapped records in storage | Every record is bound to its place in the vault as AES-GCM authenticated data, so a moved or edited record fails to decrypt |
 | A malicious web page | Pages never receive the master key. The key stays in the extension's background, and a page only receives the one value you picked to fill, after a real click. The extension and the private browser ask first before filling a page without https |
-| A look-alike phishing site | Logins fill only on the site address they were saved for |
+| A look-alike phishing site | Logins fill only on the site address they were saved for. This needs no list of bad sites, so a phishing domain registered minutes ago gets nothing |
 | Something reading the clipboard | Passwords and 2FA codes are filled directly and never copied to the clipboard |
 | A vault left open | Auto-lock after idle time. On the phone, the vault also locks after you leave the app, right away or after a short grace period. Locking closes fill lists already open on a page and throws away anything still decrypting |
 | Screenshots and the recent apps preview on the phone | Blocked by default in the app, the private browser, and the autofill screen |
@@ -32,10 +32,10 @@ This page says what Valid Vault is built to protect against, what it deliberatel
 
 The private browser leaves Google's Safe Browsing service off, so the pages you visit are never sent to Google. That is a privacy choice, and the browser has its own protection in its place, on for every page and working offline:
 
-* **Logins fill only on the site address they were saved for.** A look-alike phishing page has a different address and gets nothing, and the browser checks that the tab is still on the same scheme, address, and port before it fills. For a password manager, this is the protection that matters most against phishing
+* **Logins fill only on the site address they were saved for.** A look-alike phishing page has a different address and gets nothing, including one registered minutes ago, since this check needs no list of bad sites, and the browser checks that the tab is still on the same scheme, address, and port before it fills. For a password manager, this is the protection that matters most against phishing
 * **Every fill asks for fingerprint, device PIN, or password,** and only the one login you pick is handed to the page
 * **Pages without https ask before anything fills,** and Tor mode refuses to fill them at all
-* **Malicious ads and trackers are blocked** by the EasyList and EasyPrivacy domain lists and Valid Vault's own list, all stored on the phone, cutting off a common route for malware served through ad networks
+* **Malicious ads and trackers are blocked** by the EasyList and EasyPrivacy domain lists and Valid Vault's own list, shipped inside the signed app and never downloaded at runtime, cutting off a common route for malware served through ad networks
 * **Downloads always ask first,** showing the file name and size, and are off in Tor mode
 * **Nothing persists.** Cookies, site data, cache, and history are wiped when the browser closes, and third-party cookies are blocked
 * **It runs in its own process with its own storage,** so a page in the browser never touches the vault
@@ -48,7 +48,7 @@ The full reasoning is in [Why Safe Browsing is off in the private browser](ROADM
 * **Someone holding a device while it is unlocked.** They can see what you can see. Auto-lock and the background lock shorten that window, and nothing more is attempted
 * **A compromised operating system, root access, or malware with access to the browser's or app's memory.** No app can protect secrets from the system it runs on
 * **Other browser extensions with access to every page.** They can read a field after Valid Vault fills it, the same as for any password manager
-* **A forgotten master password with no unlocked device left.** Nothing can be recovered. This is the cost of having no server and no reset path
+* **Losing every copy at once.** You are the custodian of your vault: every device, every vault file, and every way to open the key file. A vault is gone only when all of them are gone together, so keep more than one copy. See [You Are the Custodian](README.md#you-are-the-custodian)
 * **Watching the screen while a key QR or vault QR is shown.** Do transfers somewhere private. A captured key QR still needs the passphrase and the three answers
 
 ## Tradeoffs chosen on purpose
@@ -60,6 +60,10 @@ The full reasoning is in [Why Safe Browsing is off in the private browser](ROADM
 * **Sync follows each device's clock and does not try to correct it.** The later change wins. Correcting clocks would need a server to referee, devices already set their time from the network, and a clock set far off is the owner's own choice, so guessing at a correction would let one device silently overrule another. Any edit made after a sync always wins. See [Why sync follows each device's clock](ROADMAP.md#why-sync-follows-each-devices-clock-and-does-not-try-to-correct-it)
 * **One master key, wrapped separately for each unlock method,** and the same key required on every synced device. A mismatched key fails loudly instead of merging
 
+## Self-custody
+
+Valid Vault has no server, so your vault exists only where you keep it. That removes the largest risk a password manager carries, a central store of everyone's vaults, and it means no account, no lockout, and no company standing between you and your data. Redundancy comes from you: each device is a live copy, and each vault file on a drive is a cold one. The README's [You Are the Custodian](README.md#you-are-the-custodian) section covers what that gives you and what it asks of you.
+
 ## Not yet done
 
-* An independent security audit. The source, the design decisions, and the automated tests are public in this repository for anyone to review
+* An independent security audit. The source, the design decisions, and the automated tests are public in this repository, every push runs the tests on GitHub Actions, and [SECURITY.md](SECURITY.md) explains how to report a vulnerability

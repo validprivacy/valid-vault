@@ -5,9 +5,27 @@ All notable changes to Valid Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4.4] - 2026-11-04
+
+Every push now runs the full test suite in the open, the vault, key, and QR parsers are fuzz tested, and the docs explain self-custody and the private browser's phishing protection plainly.
+
+### Added
+
+* **Tests on every push.** A GitHub Actions workflow installs the exact dependencies from the lockfile, runs all 174 tests in Chromium, rebuilds the phone bundle and checks it matches the committed www/index.html byte for byte, and audits the dependencies. The Tests badge at the top of the README links to every run.
+* **Fuzz tests.** Thousands of damaged vault files, vault QR payloads, key files, and QR frames, from random bytes to truncated files and swapped field types, are fed to the parsers. Each is refused with a clear message, merging a damaged vault file never changes the vault, and the QR decoder still rebuilds the real payload with damaged frames mixed in.
+* **SECURITY.md.** How to report a vulnerability privately, what is in scope, and when to expect a reply.
+* **You Are the Custodian.** A README section on self-custody: what you hold, what having no server gives you, and how keeping more than one copy protects you, with a matching design decision in the ROADMAP and a section in the threat model.
+
+### Changed
+
+* **Capacitor 7.6.10.** The Android app's Capacitor runtime moves from 7.4.4 to 7.6.10, which fixes a WebView navigation check that a crafted link could use to load remote content at the app's origin (GHSA-rvm3-566m-v7fv). Valid Vault does not render links from vault data, and the fix closes the path regardless. Build tool dependencies are updated to clear their advisories, so the dependency audit reports none.
+* **Phishing protection stated plainly.** README, ROADMAP, and the threat model say that login phishing protection needs no list of bad sites, so a phishing domain registered minutes ago still gets nothing. The EasyList notice now gives the snapshot's date and notes that the list ships inside the signed app and is never downloaded.
+* **Review wording.** The 0.9.4.3 notes now say the fixes came from an AI-assisted review of the source code, and that no independent security audit has been done yet.
+* **Argon2id.** The design decision now notes the migration, compatibility, and performance costs a switch would bring.
+
 ## [0.9.4.3] - 2026-11-03
 
-Fixes from an outside source review of 0.9.4.2. The review found no problem in the encryption, the key transfer, migration, or sync. It found a lock that did not reach fill lists already open on a page, a Clear Vault that could bring a cleared vault back after a crash, no https check on extension fills, and docs that claimed more than the code does. All of those are fixed here, with tests.
+Fixes from an AI-assisted review of the 0.9.4.2 source code. No independent security audit has been done yet. The review found no problem in the encryption, the key transfer, migration, or sync. It found a lock that did not reach fill lists already open on a page, a Clear Vault that could bring a cleared vault back after a crash, no https check on extension fills, and docs that claimed more than the code does. All of those are fixed here, with tests.
 
 ### Fixed
 
