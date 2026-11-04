@@ -25,6 +25,9 @@ const AUTOLOCK_DEFAULT_SEC = 60
 const QR_TIMEOUT_MIN_SEC = 5
 const QR_TIMEOUT_MAX_SEC = 600
 const QR_TIMEOUT_DEFAULT_SEC = 30
+const BACKGROUND_LOCK_CHOICES = [0, 30, 120, -1]
+const BACKGROUND_LOCK_DEFAULT_SEC = 30
+const backgroundLock = { hiddenAt: 0, timer: null }
 const MSG_SHOW_MS = 6000
 const ACTIVITY_EVENTS = ['touchstart', 'click', 'input', 'keydown', 'scroll']
 const MASK = '••••••••'
@@ -40,7 +43,7 @@ const SITE_INPUT_PATTERN = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/
 const DEAD_FINGERPRINT_CODES = ['missing', 'invalidated']
 const FINGERPRINT_RESET_TEXT = 'Android reset fingerprint unlock on this phone, so the old fingerprint setting was removed. Tap Enroll under Fingerprint to set it up again.'
 const PASSWORD_RULE_TEXT = '12+ characters with a letter, a number, and a symbol. Common passwords are refused.'
-const PASSPHRASE_TIP = 'Use four or more random words plus a number and a symbol, like copper-lantern-mosaic-drift7!. Capitalization matters.'
+const PASSPHRASE_TIP = 'At least 16 characters. Use four or more random words plus a number and a symbol, like copper-lantern-mosaic-drift7!. Capitalization matters.'
 const ANSWER_TIP = 'One word. Capitalization matters.'
 const LOGIN_TYPES = [
   { value: 'username', label: 'Username' },
@@ -50,7 +53,7 @@ const LOGIN_TYPES = [
 const TABS = ['manage', 'personal', 'webcreds', 'wallets', 'bookmarks', 'sync', 'settings', 'guide', 'about']
 
 const state = {
-  settings: { autoLock: AUTOLOCK_DEFAULT_SEC, qrTimeout: QR_TIMEOUT_DEFAULT_SEC, genMin: generator.GEN_DEFAULT_MIN, genMax: generator.GEN_DEFAULT_MAX },
+  settings: { autoLock: AUTOLOCK_DEFAULT_SEC, qrTimeout: QR_TIMEOUT_DEFAULT_SEC, backgroundLock: BACKGROUND_LOCK_DEFAULT_SEC, genMin: generator.GEN_DEFAULT_MIN, genMax: generator.GEN_DEFAULT_MAX },
   unlocked: { logins: false, webcreds: false, personal: false },
   openGroups: { logins: new Set(), webcreds: new Set() },
   setup: { masterKey: null, hasFp: false, hasPw: false },
@@ -166,6 +169,7 @@ async function loadSettings() {
     const a = await store.getAuth() || {}
     state.settings.autoLock = clamp(a.autoLockTimeout, AUTOLOCK_MIN_SEC, AUTOLOCK_MAX_SEC, AUTOLOCK_DEFAULT_SEC)
     state.settings.qrTimeout = clamp(a.qrStreamTimeout, QR_TIMEOUT_MIN_SEC, QR_TIMEOUT_MAX_SEC, QR_TIMEOUT_DEFAULT_SEC)
+    state.settings.backgroundLock = BACKGROUND_LOCK_CHOICES.includes(a.backgroundLockSec) ? a.backgroundLockSec : BACKGROUND_LOCK_DEFAULT_SEC
     const prefs = generator.normalizePrefs({ min: a.genMinLength, max: a.genMaxLength })
     state.settings.genMin = prefs.min
     state.settings.genMax = prefs.max
@@ -1664,7 +1668,7 @@ async function setupKeyPackage(mk, isChange) {
   })
   return formDialog({
     title: isChange ? 'Change key protection' : 'Protect your master key',
-    text: (isChange ? 'This replaces the passphrase and answers for new key shares and key files. Key files you already saved keep their old passphrase. ' : 'Your master key only leaves this phone wrapped under a passphrase and three security answers. Another device must enter all of them to accept it. You set this once; Share Master Key and Export Key reuse it. ') + 'Pick questions you will always remember the answers to. A lost passphrase or answer cannot be recovered.',
+    text: (isChange ? 'This replaces the passphrase and answers for new key shares and key files. Key files you already saved keep their old passphrase. ' : 'Your master key only leaves this phone wrapped under a passphrase, plus three additional answers. Another device must enter all of them to accept it. You set this once; Share Master Key and Export Key reuse it. ') + 'Choose the questions whose answers you think no one else could know. Answers to easier questions can be easier to remember, but some questions are naturally more private than others, and those are the ones to choose. The best three are different for every person. A lost passphrase or answer cannot be recovered.',
     fields,
     okLabel: 'Save',
     busyLabel: 'Securing...',
@@ -1947,9 +1951,27 @@ async function changeKeyProtection() {
   }
 }
 
+async function loadScreenshotSetting() {
+  const allowed = await platform.screenshotStatus()
+  $('screenshot-setting').classList.toggle('hidden', allowed === null)
+  if (allowed !== null) $('select-screenshots').value = allowed ? 'allowed' : 'blocked'
+}
+
+async function saveScreenshotSetting(e) {
+  try {
+    const allowed = await platform.setScreenshotsAllowed(e.target.value === 'allowed')
+    showMsg('msg-settings', allowed ? 'Screenshots allowed. Set this back to Blocked when you are done.' : 'Screenshots and app previews blocked', 'success')
+  } catch (err) {
+    showMsg('msg-settings', errText(err), 'error')
+  }
+  await loadScreenshotSetting()
+}
+
 function loadSettingsIntoForm() {
+  loadScreenshotSetting()
   $('input-autolock-timeout').value = state.settings.autoLock
   $('input-qr-timeout').value = state.settings.qrTimeout
+  $('select-background-lock').value = String(state.settings.backgroundLock)
   $('select-gen-min').value = String(state.settings.genMin)
   $('select-gen-max').value = String(state.settings.genMax)
   updateTimeReadouts()
@@ -1978,6 +2000,46 @@ async function saveQrTimeout() {
   state.settings.qrTimeout = v
   await saveAuthFields({ qrStreamTimeout: v })
   showMsg('msg-settings', 'QR stream timeout set to ' + formatDuration(v, false), 'success')
+}
+
+async function saveBackgroundLock() {
+  const value = parseInt($('select-background-lock').value, 10)
+  const seconds = BACKGROUND_LOCK_CHOICES.includes(value) ? value : BACKGROUND_LOCK_DEFAULT_SEC
+  state.settings.backgroundLock = seconds
+  await saveAuthFields({ backgroundLockSec: seconds })
+  const labels = { 0: 'right away', 30: 'after 30 seconds', 120: 'after 2 minutes' }
+  showMsg('msg-settings', seconds < 0 ? 'The vault now locks only after the idle timeout' : 'The vault now locks ' + labels[seconds] + ' when you leave the app', 'success')
+}
+
+function backgroundLockMs() {
+  return state.settings.backgroundLock < 0 ? -1 : state.settings.backgroundLock * 1000
+}
+
+function lockFromBackground() {
+  backgroundLock.timer = null
+  if (key() && !platform.awayTaskActive()) session.lockAll()
+}
+
+function leftApp() {
+  if (!key()) return
+  const ms = backgroundLockMs()
+  if (ms < 0) return
+  backgroundLock.hiddenAt = Date.now()
+  if (platform.awayTaskActive()) return
+  if (ms === 0) { session.lockAll(); return }
+  clearTimeout(backgroundLock.timer)
+  backgroundLock.timer = setTimeout(lockFromBackground, ms)
+}
+
+function returnedToApp() {
+  clearTimeout(backgroundLock.timer)
+  backgroundLock.timer = null
+  const hiddenAt = backgroundLock.hiddenAt
+  backgroundLock.hiddenAt = 0
+  if (platform.takeAwayTask()) return
+  if (!hiddenAt || !key()) return
+  const ms = backgroundLockMs()
+  if (ms >= 0 && Date.now() - hiddenAt >= ms) session.lockAll()
 }
 
 async function saveGenerator() {
@@ -2066,16 +2128,30 @@ async function clearVault() {
   if (!second) return
   await store.clearAll()
   await platform.biometricRemove()
+  let screenshotNote = ''
+  if ((await platform.screenshotStatus()) === true) {
+    try {
+      await platform.setScreenshotsAllowed(false)
+    } catch (e) {
+      screenshotNote = ' Screenshots are still allowed. Block them again in Settings.'
+    }
+  }
   await loadSettings()
   state.tab = 'manage'
   await session.lockAll()
-  showMsg('msg-setup', 'Vault cleared. Set up a new vault, or bring your existing key.', 'success')
+  showMsg('msg-setup', 'Vault cleared. Set up a new vault, or bring your existing key.' + screenshotNote, 'success')
 }
 
 function attachActivity() {
   const bump = () => { if (key()) session.resetActivity() }
   for (const name of ACTIVITY_EVENTS) document.addEventListener(name, bump, { capture: true, passive: true })
+  document.addEventListener('click', (e) => {
+    const target = e.target
+    if (target && target.tagName === 'INPUT' && target.type === 'file') platform.markAwayTask()
+  }, true)
   document.addEventListener('visibilitychange', () => {
+    if (document.hidden) leftApp()
+    else returnedToApp()
     if (!document.hidden && key()) session.checkTimeout()
     if (!document.hidden) syncTheme()
     if (document.hidden) stopScanner()
@@ -2133,6 +2209,8 @@ function wire() {
   $('input-qr-timeout').onchange = saveQrTimeout
   $('select-gen-min').onchange = saveGenerator
   $('select-gen-max').onchange = saveGenerator
+  $('select-screenshots').onchange = saveScreenshotSetting
+  $('select-background-lock').onchange = saveBackgroundLock
   $('btn-rename-key').onclick = renameKey
   $('btn-theme').onclick = () => applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true)
   syncTheme()

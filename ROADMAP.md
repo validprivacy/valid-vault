@@ -14,9 +14,13 @@
 * ✅ Unlinking a vault file reports a failure instead of claiming success
 * ✅ The extension asks before filling a page without https, the same as the private browser
 * ✅ A failed restore of a previous password, and key protection that could not be saved after a key import, are reported
+* ✅ Screenshots, screen recordings, and the recent apps preview blocked by default in the phone app and the private browser, with a setting to allow them
+* ✅ The phone vault locks after you leave the app, right away, after 30 seconds by default, after 2 minutes, or only on the idle timer, and choosing a file, sharing a file, or confirming your fingerprint does not count as leaving
+* ✅ Key passphrases need at least 16 characters, the key protection form recommends the questions whose answers no one else could know, and the app and guides describe the key as protected by a passphrase plus three additional answers
+* ✅ THREAT_MODEL.md lists what Valid Vault defends against, what it leaves to the device, and the tradeoffs chosen on purpose
 * ✅ Third-party notices for jsQR, the QR code generator, the BIP-39 word list, the Phosphor fingerprint icon, and the EasyList domain list
 * ✅ Docs corrected on how logins are matched, what Android Autofill reads, and where the Keystore key is held
-* ✅ 149 automated tests
+* ✅ 168 automated tests
 
 ### v0.9.4.2 - A New Home (Nov 2026)
 
@@ -435,10 +439,11 @@ A key file or key QR carries the master key, so it gets the strongest protection
 
 Security questions have a poor reputation for good reason. Banks and websites used them to reset a forgotten password, so anyone who learned a mother's maiden name could take over the account. Valid Vault uses its answers in a different role:
 
-* The passphrase must stand on its own. It needs at least 12 characters with a letter, a number, and a symbol, it is screened against common passwords, and four or more random words are recommended
+* The passphrase must stand on its own. It needs at least 16 characters with a letter, a number, and a symbol, it is screened against common passwords, and four or more random words are recommended
 * The passphrase and the three answers are joined into one input to a single 1,000,000-round PBKDF2-SHA256 derivation. An attacker has to guess all four together, so the answers can only add work, and the key is never weaker than the passphrase alone
 * The answers never recover, reset, or bypass anything. Nothing is stored to check them against, and a wrong answer fails exactly like a wrong passphrase, by failing to unwrap the key
 * The key file is only one half of a transfer. Without the separately exported vault file it opens nothing
+* The questions are chosen by the person, three out of ten. The form asks for the ones whose answers no one else could know. Answers to easier questions can be easier to remember, but some questions are naturally more private than others, and which ones are most private differs from person to person, so no two people's three are alike
 
 For comparison, Chrome and Google Password Manager export passwords as a plain CSV file, and Samsung Pass protects its export with a single password.
 
@@ -455,12 +460,18 @@ A 2FA setup key is stored on the login it belongs to, inside the sealed Website 
 
 Android's Safe Browsing service checks pages through Google Play services and contacts Google when a page matches its list. The private browser exists to keep your browsing between you and the sites you visit, so the service is off, in line with keeping Google SDKs out of Valid Vault entirely.
 
-What covers the gap:
+The browser replaces it with its own protection, built around what a password manager's browser needs most:
 
-* Logins fill only on the site address they were saved for, so a look-alike phishing page never gets a login, and the browser checks that the tab is still on the same scheme, address, and port before it fills. Against phishing, this is the protection that matters most in a password manager
-* Ad and tracker scripts from other sites, a common route for malicious ads, are blocked by the EasyList and EasyPrivacy domain lists and Valid Vault's own list, all stored on the phone
-* Downloads always ask first and are off in Tor mode, and pages without https ask before a login fills
-* For a site you are unsure of, any browser with Safe Browsing, such as Chrome, still fills from Valid Vault through Android Autofill
+* **Logins fill only on the site address they were saved for.** A look-alike phishing page has a different address and gets nothing, and the browser checks that the tab is still on the same scheme, address, and port before it fills. For a password manager, this is the protection that matters most against phishing
+* **Every fill asks for fingerprint, device PIN, or password,** and only the one login you pick is handed to the page
+* **Pages without https ask before anything fills,** and Tor mode refuses to fill them at all
+* **Malicious ads and trackers are blocked** by the EasyList and EasyPrivacy domain lists and Valid Vault's own list, all stored on the phone, cutting off a common route for malware served through ad networks
+* **Downloads always ask first,** showing the file name and size, and are off in Tor mode
+* **Nothing persists.** Cookies, site data, cache, and history are wiped when the browser closes, and third-party cookies are blocked
+* **It runs in its own process with its own storage,** so a page in the browser never touches the vault
+* **Safe Browsing is still one tap away when you want it.** Any browser with Safe Browsing, such as Chrome, fills from Valid Vault through Android Autofill
+
+Turning Safe Browsing off removes one lookup against Google's list of known bad sites. The measures above stay on for every page, work offline, and send nothing about your browsing anywhere.
 
 ### Why records are tied to their place in the vault
 
@@ -489,6 +500,18 @@ The extension keeps an encrypted backup copy of the vault in browser storage, so
 * A crash at any point leaves either the whole vault or nothing, never a vault that was reported cleared and comes back later
 * A marker saying a clear is pending was considered and left out. If a marker could not be removed, every later start would clear the vault again, including a new vault set up afterward
 
+### Why sync follows each device's clock and does not try to correct it
+
+When two devices change the same item before they sync, the change with the later timestamp wins. Each device stamps its own changes with its own clock, and Valid Vault does not adjust or second-guess those clocks.
+
+* Correcting a clock needs a trusted time source, and the only trusted time source would be a server. Valid Vault has no server by design, and adding one only to referee timestamps would bring back the dependency the whole project avoids
+* Phones and computers set their clocks from the network automatically, so on the devices people actually use, the clocks already agree to within a second or two
+* A clock that is far off is almost always set that way on purpose by the person who owns the device. Following the device's own time respects that choice. Guessing at a correction would mean one device overruling another on a guess, which can silently throw away the edit the person actually wanted
+* The only way to get a surprising result is to edit the same item on two devices within the same moment, with one device's clock deliberately set wrong, before either syncs. That takes a device in each hand, and the outcome is still predictable: the later stamp wins
+* Any edit made after a sync is stamped later than the record it changes, so it always wins the next merge, whatever the clocks say. Deletes leave a marker that carries to every device the same way
+
+This is the correct behavior for a serverless vault: predictable, explained, and in the user's control. Leaving the date and time set automatically keeps it from ever coming up.
+
 ---
 
 ## Known Limitations
@@ -497,13 +520,11 @@ The extension keeps an encrypted backup copy of the vault in browser storage, so
 
 ⚠️ **Save prompts are matched to your browser tab, not the exact page** - so they survive a login redirect (like SSO or MFA) instead of getting lost. In rare cases, navigating elsewhere in that same tab within the 45-second window could bring the prompt up there too - a minor UX quirk, not a credential leak.
 
-⚠️ **Auto-lock is a foreground inactivity timer** on the phone - exact timing while backgrounded is subject to OS suspension
+⚠️ **Android pauses the phone's idle timer in the background** - the vault also locks after you leave the app, right away or after a grace period you choose, and checks again the moment you come back, but exact timing while the app is suspended is up to Android
 
 ⚠️ **SSN and card storage deliberately deferred**, pending security work
 
 ⚠️ **Saved logins are matched by site address** - http and https pages, and different ports, on the same address share the same logins. The extension and the private browser ask before filling a page without https, and Android Autofill in other browsers relies on that browser's own warnings
-
-⚠️ **The unlocked phone app can appear in the recent apps preview** - the autofill screen is hidden from screenshots and previews, the main app and the private browser are not yet
 
 ⚠️ **Tor mode checks that a proxy answers on Orbot's port** - it confirms a SOCKS5 proxy at 127.0.0.1:9050, not that the proxy is Orbot or that it is connected to Tor
 
@@ -512,7 +533,7 @@ The extension keeps an encrypted backup copy of the vault in browser storage, so
 
 ⚠️ **The private browser needs Android 9 or newer**
 
-⚠️ **Sync trusts each device's clock** - when two devices change the same item before syncing, the change with the later timestamp wins, so a device whose clock runs well ahead can win that conflict even if its change was made first. Any edit made after a sync always wins over what the sync brought in. Leaving the date and time set automatically keeps this from coming up
+⚠️ **Sync follows each device's clock, on purpose** - when two devices change the same item before syncing, the later timestamp wins, and a clock set far ahead by hand can win that conflict. Correcting clocks would need a server to referee, and guessing would let one device overrule another. Any edit made after a sync always wins. See [Why sync follows each device's clock](#why-sync-follows-each-devices-clock-and-does-not-try-to-correct-it)
 
 ⚠️ **2FA codes fill a single code box** - codes split across one-digit boxes, and code boxes in the private browser, are typed from the code shown in Valid Vault for now
 

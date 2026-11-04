@@ -46,5 +46,18 @@
     deleteFile: async ({ path }) => { window.__deleted.push(path); delete window.__fsFiles[path] }
   }
   const Share = { share: async (opts) => { window.__shared.push(opts.url) } }
-  window.Capacitor = { isNativePlatform: () => true, Plugins: { BiometricVault, NativeDownloader, Filesystem, Share } }
+  window.__screenshotCalls = []
+  const ScreenPrivacy = {
+    status: async () => ({ allowed: localStorage.getItem('__screenshotsAllowed') === 'yes' }),
+    setAllowed: async ({ allowed }) => {
+      window.__screenshotCalls.push(!!allowed)
+      if (localStorage.getItem('__screenshotFail') === 'yes') throw new Error('Could not save the screenshot setting')
+      if (allowed) localStorage.setItem('__screenshotsAllowed', 'yes')
+      else localStorage.removeItem('__screenshotsAllowed')
+      return { allowed: !!allowed }
+    }
+  }
+  const plugins = { BiometricVault, NativeDownloader, Filesystem, Share }
+  if (localStorage.getItem('__noScreenPrivacy') !== 'yes') plugins.ScreenPrivacy = ScreenPrivacy
+  window.Capacitor = { isNativePlatform: () => true, Plugins: plugins }
 })()

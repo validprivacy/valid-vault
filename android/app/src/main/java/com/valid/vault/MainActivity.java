@@ -13,6 +13,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(BrowserBridge.class);
         registerPlugin(LaunchTarget.class);
         registerPlugin(QrScreen.class);
+        registerPlugin(ScreenPrivacy.class);
         super.onCreate(savedInstanceState);
+        ScreenPrivacy.apply(this);
     }
 }

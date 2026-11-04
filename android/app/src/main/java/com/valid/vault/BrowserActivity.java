@@ -476,6 +476,7 @@ public class BrowserActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ScreenPrivacy.apply(this);
         if (!supported()) {
             super.onCreate(savedInstanceState);
             Toast.makeText(this, "The private browser needs Android 9 or newer", Toast.LENGTH_LONG).show();
@@ -2790,6 +2791,7 @@ public class BrowserActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        ScreenPrivacy.apply(this);
         resumed = true;
         if (root == null || rendererLost) return;
         loadSettings();

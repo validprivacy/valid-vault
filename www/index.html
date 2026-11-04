@@ -422,7 +422,7 @@
       <div id="tab-sync" class="panel">
         <h1>Sync</h1>
         <h2>Share</h2>
-        <p class="lead">Show a QR for another device to scan. The vault stays encrypted under your master key, and the master key is wrapped under your passphrase and three security answers, so the receiving device must enter them before it can use the key. The vault QR carries bookmarks and crypto wallets too, encrypted under your master key like a vault file.</p>
+        <p class="lead">Show a QR for another device to scan. The vault stays encrypted under your master key, and the master key is wrapped under your passphrase, plus three additional answers, so the receiving device must enter them before it can use the key. The vault QR carries bookmarks and crypto wallets too, encrypted under your master key like a vault file.</p>
         <div class="btn-row">
           <button id="btn-share-vault">Share Vault</button>
           <button id="btn-share-key" class="secondary">Share Master Key</button>
@@ -462,13 +462,31 @@
         </div>
         <div class="setting">
           <div class="setting-label">Auto-lock timeout (seconds)</div>
-          <div class="setting-desc">Idle seconds before the vault locks, from 10 seconds to 2 hours. The timer runs while the app is open; Android may pause it in the background.</div>
+          <div class="setting-desc">Idle seconds before the vault locks, from 10 seconds to 2 hours. The timer runs while the app is open; Android may pause it in the background, so also choose when the vault locks after you leave the app below.</div>
           <div class="time-input"><input type="number" inputmode="numeric" min="10" max="7200" value="60" id="input-autolock-timeout"><span class="time-readout" id="readout-autolock-timeout">00h 01m 00s</span></div>
+        </div>
+        <div class="setting">
+          <div class="setting-label">Lock when you leave the app</div>
+          <div class="setting-desc">How long the vault stays unlocked after you switch to another app or turn off the screen. Choosing a file, sharing a file, or confirming your fingerprint does not count as leaving.</div>
+          <select id="select-background-lock">
+            <option value="0">Right away</option>
+            <option value="30">After 30 seconds</option>
+            <option value="120">After 2 minutes</option>
+            <option value="-1">Only after the idle timeout</option>
+          </select>
         </div>
         <div class="setting">
           <div class="setting-label">QR stream timeout (seconds)</div>
           <div class="setting-desc">Seconds a shared QR stays visible before it closes on its own.</div>
           <div class="time-input"><input type="number" inputmode="numeric" min="5" max="600" value="30" id="input-qr-timeout"><span class="time-readout" id="readout-qr-timeout">00m 30s</span></div>
+        </div>
+        <div class="setting hidden" id="screenshot-setting">
+          <div class="setting-label">Screenshots and app previews</div>
+          <div class="setting-desc">Blocked by default, so Android's recent apps list shows a blank card instead of your unlocked vault, and screenshots and screen recordings of Valid Vault and its private browser come out blank. Allow them only while you need them. The autofill screen stays blocked either way.</div>
+          <select id="select-screenshots">
+            <option value="blocked">Blocked</option>
+            <option value="allowed">Allowed</option>
+          </select>
         </div>
         <h2>Password Generator</h2>
         <div class="setting">
@@ -616,9 +634,10 @@
         <details>
           <summary>Unlocking and auto-lock</summary>
           <div class="body">
-            <p>Fingerprint or device PIN is the quickest way in. The secret stays in the phone's secure hardware. A master password works as a backup.</p>
+            <p>Fingerprint or device PIN is the quickest way in. The secret stays in the phone's secure hardware on phones that have it. A master password works as a backup.</p>
             <p>If you add a new fingerprint to your phone, Android resets Valid Vault's fingerprint unlock for safety. Unlock with your password, then re-enroll in Manage.</p>
-            <p>The vault locks after the idle time in Settings, or when you tap Lock.</p>
+            <p>The vault locks after the idle time in Settings, or when you tap Lock. It also locks after you leave the app, 30 seconds later unless you change Lock when you leave the app in Settings. Choosing a file, sharing a file, or confirming your fingerprint does not count as leaving.</p>
+            <p>Screenshots, screen recordings, and Android's recent apps preview of Valid Vault and its private browser are blocked, so the app switcher shows a blank card instead of your vault. To take a screenshot, set Settings, Screenshots and app previews to Allowed, and set it back when you are done.</p>
           </div>
         </details>
         <details>
@@ -15425,7 +15444,8 @@ const EXPORT_ITERATIONS = 1000000
 const SALT_BYTES = 16
 const WRAP_IV_BYTES = 12
 const WRAPPED_KEY_BYTES = 48
-const MIN_PASSPHRASE_LENGTH = 12
+const MIN_PASSPHRASE_LENGTH = 16
+const MIN_PASSWORD_LENGTH = 12
 const MIN_UNIQUE_CHARS = 6
 const QUESTION_COUNT = 3
 const DEFAULT_NICKNAME = 'My Master Key'
@@ -15496,7 +15516,8 @@ function isRepeatOfCommon(letters) {
 
 function passphraseProblem(pass, noun) {
   const name = noun || 'passphrase'
-  if (!pass || pass.length < MIN_PASSPHRASE_LENGTH) return 'Use at least ' + MIN_PASSPHRASE_LENGTH + ' characters.'
+  const minimum = noun ? MIN_PASSWORD_LENGTH : MIN_PASSPHRASE_LENGTH
+  if (!pass || pass.length < minimum) return 'Use at least ' + minimum + ' characters.'
   if (!/[a-zA-Z]/.test(pass) || !/[0-9]/.test(pass) || !/[^a-zA-Z0-9]/.test(pass)) return 'Include a letter, a number, and a symbol.'
   if (new Set(pass.toLowerCase()).size < MIN_UNIQUE_CHARS) return 'Too many repeated characters. Try four or more random words.'
   for (const letters of coreVariants(pass)) {
@@ -17216,6 +17237,26 @@ const ALIAS_A = 'valid_vault_biometric_key_a'
 const ALIAS_B = 'valid_vault_biometric_key_b'
 const FILE_ACCEPT = '.vaultkey,.vault,application/json,application/octet-stream,text/plain'
 const CACHE_DIRECTORY = 'CACHE'
+const AWAY_TASK_MAX_MS = 600000
+const awayTask = { since: 0 }
+
+function markAwayTask() {
+  awayTask.since = Date.now()
+}
+
+function endAwayTask() {
+  awayTask.since = 0
+}
+
+function awayTaskActive() {
+  return awayTask.since > 0 && Date.now() - awayTask.since < AWAY_TASK_MAX_MS
+}
+
+function takeAwayTask() {
+  const active = awayTaskActive()
+  awayTask.since = 0
+  return active
+}
 
 function plugin(name) {
   try {
@@ -17273,11 +17314,14 @@ async function biometricEnroll(masterKey, currentRecord) {
   try {
     const raw = new Uint8Array(await crypto.subtle.exportKey('raw', masterKey))
     const alias = nextAlias(currentRecord)
+    markAwayTask()
     const r = await bv.enroll({ masterKey: bytesToBase64(raw), alias })
     raw.fill(0)
     return { success: true, record: { wrapped: r.wrapped, iv: r.iv, alias: r.alias || alias } }
   } catch (e) {
     return { success: false, code: errorCode(e), error: errorMessage(e) }
+  } finally {
+    endAwayTask()
   }
 }
 
@@ -17288,6 +17332,7 @@ async function biometricUnlock(record) {
   try {
     const args = { wrapped: record.wrapped, iv: record.iv }
     if (record.alias) args.alias = record.alias
+    markAwayTask()
     const r = await bv.unlock(args)
     const raw = base64ToBytes(r.masterKey)
     const masterKey = await masterKeyToCryptoKey(raw)
@@ -17295,6 +17340,8 @@ async function biometricUnlock(record) {
     return { success: true, masterKey }
   } catch (e) {
     return { success: false, code: errorCode(e), error: errorMessage(e) }
+  } finally {
+    endAwayTask()
   }
 }
 
@@ -17335,8 +17382,10 @@ async function shareFile(filename, text) {
   if (!fs || !share) throw new Error('Sharing files is not available on this device')
   const written = await fs.writeFile({ path: filename, data: text, directory: CACHE_DIRECTORY, encoding: 'utf8' })
   try {
+    markAwayTask()
     await share.share({ title: filename, url: written.uri, dialogTitle: 'Send ' + filename })
   } finally {
+    endAwayTask()
     try { await fs.deleteFile({ path: filename, directory: CACHE_DIRECTORY }) } catch (e) {}
   }
   return true
@@ -17520,6 +17569,24 @@ async function holdScreen(on) {
   } catch (e) {}
 }
 
+async function screenshotStatus() {
+  const sp = plugin('ScreenPrivacy')
+  if (!sp) return null
+  try {
+    const result = await sp.status()
+    return !!(result && result.allowed)
+  } catch (e) {
+    return null
+  }
+}
+
+async function setScreenshotsAllowed(allowed) {
+  const sp = plugin('ScreenPrivacy')
+  if (!sp) throw new Error('Screenshot protection is only available in the Android app')
+  const result = await sp.setAllowed({ allowed: !!allowed })
+  return !!(result && result.allowed)
+}
+
 async function openBrowserSearch() {
   const bb = plugin('BrowserBridge')
   if (!bb) throw new Error('The browser is not available on this device')
@@ -17536,7 +17603,7 @@ async function openInBrowser(url) {
   }
   openExternal(url)
 }
-return Object.freeze({ "isNative": isNative, "biometricAvailable": biometricAvailable, "biometricEnroll": biometricEnroll, "biometricUnlock": biometricUnlock, "biometricRemove": biometricRemove, "saveToDownloads": saveToDownloads, "canShareFiles": canShareFiles, "shareFile": shareFile, "pickTextFile": pickTextFile, "takeShared": takeShared, "onShared": onShared, "returnToSender": returnToSender, "takeLaunch": takeLaunch, "onLaunch": onLaunch, "autofillRequest": autofillRequest, "autofillComplete": autofillComplete, "autofillCompleteInfo": autofillCompleteInfo, "setBrowserGenerator": setBrowserGenerator, "holdScreen": holdScreen, "autofillClose": autofillClose, "autofillStatus": autofillStatus, "openAutofillSettings": openAutofillSettings, "openExternal": openExternal, "browserSettings": browserSettings, "browserTheme": browserTheme, "setBrowserTheme": setBrowserTheme, "setBrowserEngine": setBrowserEngine, "removeBrowserSite": removeBrowserSite, "openBrowserSearch": openBrowserSearch, "openInBrowser": openInBrowser })
+return Object.freeze({ "isNative": isNative, "biometricAvailable": biometricAvailable, "biometricEnroll": biometricEnroll, "biometricUnlock": biometricUnlock, "biometricRemove": biometricRemove, "saveToDownloads": saveToDownloads, "canShareFiles": canShareFiles, "shareFile": shareFile, "pickTextFile": pickTextFile, "takeShared": takeShared, "onShared": onShared, "returnToSender": returnToSender, "takeLaunch": takeLaunch, "onLaunch": onLaunch, "autofillRequest": autofillRequest, "autofillComplete": autofillComplete, "autofillCompleteInfo": autofillCompleteInfo, "setBrowserGenerator": setBrowserGenerator, "holdScreen": holdScreen, "markAwayTask": markAwayTask, "awayTaskActive": awayTaskActive, "takeAwayTask": takeAwayTask, "screenshotStatus": screenshotStatus, "setScreenshotsAllowed": setScreenshotsAllowed, "autofillClose": autofillClose, "autofillStatus": autofillStatus, "openAutofillSettings": openAutofillSettings, "openExternal": openExternal, "browserSettings": browserSettings, "browserTheme": browserTheme, "setBrowserTheme": setBrowserTheme, "setBrowserEngine": setBrowserEngine, "removeBrowserSite": removeBrowserSite, "openBrowserSearch": openBrowserSearch, "openInBrowser": openInBrowser })
 })()
 
 __modules["extension/fileimport.js"] = (function () {
@@ -18606,6 +18673,9 @@ const AUTOLOCK_DEFAULT_SEC = 60
 const QR_TIMEOUT_MIN_SEC = 5
 const QR_TIMEOUT_MAX_SEC = 600
 const QR_TIMEOUT_DEFAULT_SEC = 30
+const BACKGROUND_LOCK_CHOICES = [0, 30, 120, -1]
+const BACKGROUND_LOCK_DEFAULT_SEC = 30
+const backgroundLock = { hiddenAt: 0, timer: null }
 const MSG_SHOW_MS = 6000
 const ACTIVITY_EVENTS = ['touchstart', 'click', 'input', 'keydown', 'scroll']
 const MASK = '••••••••'
@@ -18621,7 +18691,7 @@ const SITE_INPUT_PATTERN = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/
 const DEAD_FINGERPRINT_CODES = ['missing', 'invalidated']
 const FINGERPRINT_RESET_TEXT = 'Android reset fingerprint unlock on this phone, so the old fingerprint setting was removed. Tap Enroll under Fingerprint to set it up again.'
 const PASSWORD_RULE_TEXT = '12+ characters with a letter, a number, and a symbol. Common passwords are refused.'
-const PASSPHRASE_TIP = 'Use four or more random words plus a number and a symbol, like copper-lantern-mosaic-drift7!. Capitalization matters.'
+const PASSPHRASE_TIP = 'At least 16 characters. Use four or more random words plus a number and a symbol, like copper-lantern-mosaic-drift7!. Capitalization matters.'
 const ANSWER_TIP = 'One word. Capitalization matters.'
 const LOGIN_TYPES = [
   { value: 'username', label: 'Username' },
@@ -18631,7 +18701,7 @@ const LOGIN_TYPES = [
 const TABS = ['manage', 'personal', 'webcreds', 'wallets', 'bookmarks', 'sync', 'settings', 'guide', 'about']
 
 const state = {
-  settings: { autoLock: AUTOLOCK_DEFAULT_SEC, qrTimeout: QR_TIMEOUT_DEFAULT_SEC, genMin: generator.GEN_DEFAULT_MIN, genMax: generator.GEN_DEFAULT_MAX },
+  settings: { autoLock: AUTOLOCK_DEFAULT_SEC, qrTimeout: QR_TIMEOUT_DEFAULT_SEC, backgroundLock: BACKGROUND_LOCK_DEFAULT_SEC, genMin: generator.GEN_DEFAULT_MIN, genMax: generator.GEN_DEFAULT_MAX },
   unlocked: { logins: false, webcreds: false, personal: false },
   openGroups: { logins: new Set(), webcreds: new Set() },
   setup: { masterKey: null, hasFp: false, hasPw: false },
@@ -18747,6 +18817,7 @@ async function loadSettings() {
     const a = await store.getAuth() || {}
     state.settings.autoLock = clamp(a.autoLockTimeout, AUTOLOCK_MIN_SEC, AUTOLOCK_MAX_SEC, AUTOLOCK_DEFAULT_SEC)
     state.settings.qrTimeout = clamp(a.qrStreamTimeout, QR_TIMEOUT_MIN_SEC, QR_TIMEOUT_MAX_SEC, QR_TIMEOUT_DEFAULT_SEC)
+    state.settings.backgroundLock = BACKGROUND_LOCK_CHOICES.includes(a.backgroundLockSec) ? a.backgroundLockSec : BACKGROUND_LOCK_DEFAULT_SEC
     const prefs = generator.normalizePrefs({ min: a.genMinLength, max: a.genMaxLength })
     state.settings.genMin = prefs.min
     state.settings.genMax = prefs.max
@@ -20245,7 +20316,7 @@ async function setupKeyPackage(mk, isChange) {
   })
   return formDialog({
     title: isChange ? 'Change key protection' : 'Protect your master key',
-    text: (isChange ? 'This replaces the passphrase and answers for new key shares and key files. Key files you already saved keep their old passphrase. ' : 'Your master key only leaves this phone wrapped under a passphrase and three security answers. Another device must enter all of them to accept it. You set this once; Share Master Key and Export Key reuse it. ') + 'Pick questions you will always remember the answers to. A lost passphrase or answer cannot be recovered.',
+    text: (isChange ? 'This replaces the passphrase and answers for new key shares and key files. Key files you already saved keep their old passphrase. ' : 'Your master key only leaves this phone wrapped under a passphrase, plus three additional answers. Another device must enter all of them to accept it. You set this once; Share Master Key and Export Key reuse it. ') + 'Choose the questions whose answers you think no one else could know. Answers to easier questions can be easier to remember, but some questions are naturally more private than others, and those are the ones to choose. The best three are different for every person. A lost passphrase or answer cannot be recovered.',
     fields,
     okLabel: 'Save',
     busyLabel: 'Securing...',
@@ -20528,9 +20599,27 @@ async function changeKeyProtection() {
   }
 }
 
+async function loadScreenshotSetting() {
+  const allowed = await platform.screenshotStatus()
+  $('screenshot-setting').classList.toggle('hidden', allowed === null)
+  if (allowed !== null) $('select-screenshots').value = allowed ? 'allowed' : 'blocked'
+}
+
+async function saveScreenshotSetting(e) {
+  try {
+    const allowed = await platform.setScreenshotsAllowed(e.target.value === 'allowed')
+    showMsg('msg-settings', allowed ? 'Screenshots allowed. Set this back to Blocked when you are done.' : 'Screenshots and app previews blocked', 'success')
+  } catch (err) {
+    showMsg('msg-settings', errText(err), 'error')
+  }
+  await loadScreenshotSetting()
+}
+
 function loadSettingsIntoForm() {
+  loadScreenshotSetting()
   $('input-autolock-timeout').value = state.settings.autoLock
   $('input-qr-timeout').value = state.settings.qrTimeout
+  $('select-background-lock').value = String(state.settings.backgroundLock)
   $('select-gen-min').value = String(state.settings.genMin)
   $('select-gen-max').value = String(state.settings.genMax)
   updateTimeReadouts()
@@ -20559,6 +20648,46 @@ async function saveQrTimeout() {
   state.settings.qrTimeout = v
   await saveAuthFields({ qrStreamTimeout: v })
   showMsg('msg-settings', 'QR stream timeout set to ' + formatDuration(v, false), 'success')
+}
+
+async function saveBackgroundLock() {
+  const value = parseInt($('select-background-lock').value, 10)
+  const seconds = BACKGROUND_LOCK_CHOICES.includes(value) ? value : BACKGROUND_LOCK_DEFAULT_SEC
+  state.settings.backgroundLock = seconds
+  await saveAuthFields({ backgroundLockSec: seconds })
+  const labels = { 0: 'right away', 30: 'after 30 seconds', 120: 'after 2 minutes' }
+  showMsg('msg-settings', seconds < 0 ? 'The vault now locks only after the idle timeout' : 'The vault now locks ' + labels[seconds] + ' when you leave the app', 'success')
+}
+
+function backgroundLockMs() {
+  return state.settings.backgroundLock < 0 ? -1 : state.settings.backgroundLock * 1000
+}
+
+function lockFromBackground() {
+  backgroundLock.timer = null
+  if (key() && !platform.awayTaskActive()) session.lockAll()
+}
+
+function leftApp() {
+  if (!key()) return
+  const ms = backgroundLockMs()
+  if (ms < 0) return
+  backgroundLock.hiddenAt = Date.now()
+  if (platform.awayTaskActive()) return
+  if (ms === 0) { session.lockAll(); return }
+  clearTimeout(backgroundLock.timer)
+  backgroundLock.timer = setTimeout(lockFromBackground, ms)
+}
+
+function returnedToApp() {
+  clearTimeout(backgroundLock.timer)
+  backgroundLock.timer = null
+  const hiddenAt = backgroundLock.hiddenAt
+  backgroundLock.hiddenAt = 0
+  if (platform.takeAwayTask()) return
+  if (!hiddenAt || !key()) return
+  const ms = backgroundLockMs()
+  if (ms >= 0 && Date.now() - hiddenAt >= ms) session.lockAll()
 }
 
 async function saveGenerator() {
@@ -20647,16 +20776,30 @@ async function clearVault() {
   if (!second) return
   await store.clearAll()
   await platform.biometricRemove()
+  let screenshotNote = ''
+  if ((await platform.screenshotStatus()) === true) {
+    try {
+      await platform.setScreenshotsAllowed(false)
+    } catch (e) {
+      screenshotNote = ' Screenshots are still allowed. Block them again in Settings.'
+    }
+  }
   await loadSettings()
   state.tab = 'manage'
   await session.lockAll()
-  showMsg('msg-setup', 'Vault cleared. Set up a new vault, or bring your existing key.', 'success')
+  showMsg('msg-setup', 'Vault cleared. Set up a new vault, or bring your existing key.' + screenshotNote, 'success')
 }
 
 function attachActivity() {
   const bump = () => { if (key()) session.resetActivity() }
   for (const name of ACTIVITY_EVENTS) document.addEventListener(name, bump, { capture: true, passive: true })
+  document.addEventListener('click', (e) => {
+    const target = e.target
+    if (target && target.tagName === 'INPUT' && target.type === 'file') platform.markAwayTask()
+  }, true)
   document.addEventListener('visibilitychange', () => {
+    if (document.hidden) leftApp()
+    else returnedToApp()
     if (!document.hidden && key()) session.checkTimeout()
     if (!document.hidden) syncTheme()
     if (document.hidden) stopScanner()
@@ -20714,6 +20857,8 @@ function wire() {
   $('input-qr-timeout').onchange = saveQrTimeout
   $('select-gen-min').onchange = saveGenerator
   $('select-gen-max').onchange = saveGenerator
+  $('select-screenshots').onchange = saveScreenshotSetting
+  $('select-background-lock').onchange = saveBackgroundLock
   $('btn-rename-key').onclick = renameKey
   $('btn-theme').onclick = () => applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true)
   syncTheme()

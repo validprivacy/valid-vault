@@ -7,7 +7,8 @@ const EXPORT_ITERATIONS = 1000000
 const SALT_BYTES = 16
 const WRAP_IV_BYTES = 12
 const WRAPPED_KEY_BYTES = 48
-const MIN_PASSPHRASE_LENGTH = 12
+const MIN_PASSPHRASE_LENGTH = 16
+const MIN_PASSWORD_LENGTH = 12
 const MIN_UNIQUE_CHARS = 6
 const QUESTION_COUNT = 3
 const DEFAULT_NICKNAME = 'My Master Key'
@@ -78,7 +79,8 @@ function isRepeatOfCommon(letters) {
 
 function passphraseProblem(pass, noun) {
   const name = noun || 'passphrase'
-  if (!pass || pass.length < MIN_PASSPHRASE_LENGTH) return 'Use at least ' + MIN_PASSPHRASE_LENGTH + ' characters.'
+  const minimum = noun ? MIN_PASSWORD_LENGTH : MIN_PASSPHRASE_LENGTH
+  if (!pass || pass.length < minimum) return 'Use at least ' + minimum + ' characters.'
   if (!/[a-zA-Z]/.test(pass) || !/[0-9]/.test(pass) || !/[^a-zA-Z0-9]/.test(pass)) return 'Include a letter, a number, and a symbol.'
   if (new Set(pass.toLowerCase()).size < MIN_UNIQUE_CHARS) return 'Too many repeated characters. Try four or more random words.'
   for (const letters of coreVariants(pass)) {

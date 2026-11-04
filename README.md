@@ -23,7 +23,7 @@ A local, encrypted, QR code portable password manager that works without a cloud
 
 > ✅ **Lock and Clear Hardening - v0.9.4.3**
 >
-> Fixes from an outside source review. Locking now closes any fill list already open on a page, and a login, Personal Info value, or 2FA code that finishes decrypting after the lock is thrown away instead of filled. Clear Vault removes the browser's backup copy first and reports an error instead of success if anything could not be removed, so a cleared vault can never come back on its own. On a page without https, the extension asks before filling, the same way the phone's private browser does. The docs now describe matching and Android Autofill exactly as the code does it, and 149 automated tests cover the new behavior. See [CHANGELOG.md](CHANGELOG.md) for full details.
+> Fixes from an outside source review. Locking now closes any fill list already open on a page, and a login, Personal Info value, or 2FA code that finishes decrypting after the lock is thrown away instead of filled. Clear Vault removes the browser's backup copy first and reports an error instead of success if anything could not be removed, so a cleared vault can never come back on its own. On a page without https, the extension asks before filling, the same way the phone's private browser does. On the phone, screenshots and the recent apps preview of the vault and the private browser are now blocked by default, with a setting to allow them, and the vault locks after you leave the app, 30 seconds later by default. THREAT_MODEL.md lays out what Valid Vault defends against and what it leaves to the device, the docs describe matching and Android Autofill exactly as the code does it, and 168 automated tests cover the new behavior. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ---
 
@@ -65,6 +65,8 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * Changing or deleting an unlock method and Clear Vault always ask for fingerprint, device PIN, or password again, even while the vault is unlocked
 * Mouse movement, scrolling, clicks, and typing anywhere in the browser count as activity for auto-lock; only real input counts, so a page cannot fake activity to keep the vault open
 * Locking closes any fill list already open on a page, and an entry picked from a list opened before the lock fills nothing
+* On the phone, the vault locks after you leave the app, after 30 seconds by default, with Right away, 2 minutes, or idle timer only in Settings; choosing a file, sharing a file, or confirming your fingerprint does not count as leaving
+* On the phone, screenshots, screen recordings, and the recent apps preview of Valid Vault and its private browser are blocked by default; Settings, Screenshots and app previews allows them while you need them, and the autofill screen stays blocked either way
 * Clear Vault removes the browser's backup copy before the vault itself, and reports an error instead of success if anything could not be removed, so a cleared vault never comes back on its own
 
 **Autofill (Extension):**
@@ -107,7 +109,7 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * Downloads saved to the Downloads folder after a confirm, with the file name and size shown first
 * Tracking tags stripped from links (utm, fbclid, gclid, YouTube and Spotify si, and more), and redirect wrappers from Google, Facebook, Instagram, YouTube, Steam, and Reddit skipped
 * Third-party cookies blocked, and the app identity header hidden from sites
-* Android's Safe Browsing service is turned off in the private browser, so the pages you visit are never checked with Google. Logins still fill only on the exact site they were saved for, so a look-alike phishing page gets nothing, ad and tracker scripts are blocked from lists stored on the phone, and downloads ask first. The tradeoff is covered in [Design Decisions](ROADMAP.md#design-decisions)
+* Android's Safe Browsing service is off, so the pages you visit are never sent to Google; the browser's own phishing and malware protection is listed below
 * Private by default: cookies, site data, cache, and history wiped when you close it
 * Search with Startpage by default, or DuckDuckGo or Brave Search, chosen in Settings
 * Tabs, up to 15, with a tab count beside the address bar that opens the tab list; tabs you aren't looking at are paused
@@ -130,6 +132,21 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * In Tor mode there are no V tags, no save prompts, no Personal Info, and no password generator; Fill login in the menu works on https pages with Safer off, and reminds you once each session that signing in tells the site who you are
 * Also works with a VPN, or Orbot in VPN mode
 
+**Phishing and Malware Protection in the Private Browser:**
+
+The private browser leaves Google's Safe Browsing service off so your browsing stays between you and the sites you visit, and protects you with its own measures instead:
+
+* **Logins fill only on the site address they were saved for.** A look-alike phishing page has a different address and gets nothing, and the browser checks that the tab is still on the same scheme, address, and port before it fills. For a password manager, this is the protection that matters most against phishing
+* **Every fill asks for fingerprint, device PIN, or password,** and only the one login you pick is handed to the page
+* **Pages without https ask before anything fills,** and Tor mode refuses to fill them at all
+* **Malicious ads and trackers are blocked** by the EasyList and EasyPrivacy domain lists and Valid Vault's own list, all stored on the phone, cutting off a common route for malware served through ad networks
+* **Downloads always ask first,** showing the file name and size, and are off in Tor mode
+* **Nothing persists.** Cookies, site data, cache, and history are wiped when the browser closes, and third-party cookies are blocked
+* **It runs in its own process with its own storage,** so a page in the browser never touches the vault
+* **Safe Browsing is still one tap away when you want it.** Any browser with Safe Browsing, such as Chrome, fills from Valid Vault through Android Autofill
+
+The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-the-private-browser) and [THREAT_MODEL.md](THREAT_MODEL.md).
+
 **Day and Night:**
 
 * Ink for day and Platinum for night, switched with the sun and moon button in the phone app, beside the private browser's address bar, and in the extension's popup, Manage, bookmarks panel, and User Guide; the phone app and its browser share one choice, and every extension page shares another
@@ -149,7 +166,7 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * USB cold storage - Export Vault and Export Key to a USB drive for an offline backup you hold yourself; both files are encrypted, Valid Vault has no plaintext export, and the drive restores through the same import path as a QR share
 * Protected key transfer - the master key only leaves a device wrapped under a passphrase, plus three additional answers you pick, stretched with 1,000,000 PBKDF2 rounds; the same package goes into the key QR and the key file, and the receiving device must enter all of them to accept it
 * Set once, reused after - the protection is set on the first key share or export, then Share Master Key and Export Key are one click; Change Key Passphrase replaces it
-* The passphrase must stand on its own: at least 12 characters with a letter, a number, and a symbol, screened against common passwords, with four or more random words recommended
+* The passphrase must stand on its own: at least 16 characters with a letter, a number, and a symbol, screened against common passwords, with four or more random words recommended
 * The three additional answers are mixed into the same key derivation as extra secret input, so they can only add work for an attacker; they never recover or reset anything, and nothing is stored to check them against
 * Logins, Web Credentials, and Personal Info all travel together through the same export/import/QR flow, merged by timestamp with tombstoned deletes
 * Bookmarks and Crypto Wallets travel inside the encrypted vault file (Export Vault / Import Vault) and the vault QR, with the same tombstoned-delete merge
@@ -179,7 +196,7 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * Single-file web bundle - build.js bundles the phone app from the extension's own modules into one self-contained HTML file, so both clients share one copy of the core code
 * Android via Capacitor, with native plugins for biometric auth, file saving, autofill, sharing, and the private browser
 * Every library is vendored into the bundle, and the scan path runs without Google SDKs
-* 149 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
+* 168 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
 
 ## Current Status: v0.9.4.3 - Final Bug Fixes and Polish
 
@@ -237,12 +254,12 @@ Your data stays on your own devices, so there is nothing on a company's server t
 * ✅ New look on the phone: day and night modes, the striped V, raised and recessed design, redrawn start page backgrounds, and day and night widgets
 * ✅ Encrypted backup copy in the extension that restores the vault after the browser clears site data
 * ✅ New look in the extension: day and night modes, the striped V, and the raised and recessed design across the popup, Manage, the bookmarks panel, the User Guide, and the V tags on websites
-* ✅ 149 automated tests for the extension and the phone app, public in the repository and run with `npm test`
+* ✅ 168 automated tests for the extension and the phone app, public in the repository and run with `npm test`
 * ✅ Deletes win same-moment conflicts on every synced section, trusted browsers checked by signing certificate, and extra fields chosen one by one in the save prompt
 * ✅ Crypto wallets travel in the vault QR with the rest of the vault
 * ✅ 2FA codes on logins: typed setup key or scanned QR, live codes in Manage and the phone app, a V tag on code boxes, Android Autofill for code boxes, and imports from Bitwarden, 1Password, and CSV
 * ✅ Ranked phone numbers and addresses, Personal Info merged entry by entry, every encrypted record tied to its place in the vault, and sync tested against clock drift, offline edits, old backups, and mixed versions
-* ✅ Open fill lists cleared on lock, Clear Vault that never leaves a recoverable copy behind, and an ask before the extension fills a page without https
+* ✅ Open fill lists cleared on lock, Clear Vault that never leaves a recoverable copy behind, an ask before the extension fills a page without https, screenshots and recent apps previews blocked on the phone, a lock when you leave the phone app, and a threat model
 
 **Before 1.0:**
 
@@ -261,6 +278,8 @@ Merging requires both devices to hold the same master key. If the keys don't mat
 Recovery follows from the same model. As long as any device still unlocks the vault, a lost key file or a forgotten passphrase is fixed in place: unlock, use Change Key Passphrase, and export a fresh key file. A vault becomes unrecoverable only when no device can unlock it and no key file can be opened, which in practice means uninstalling the extension or the app without exporting the key first.
 
 ## Security Model
+
+[THREAT_MODEL.md](THREAT_MODEL.md) lists what Valid Vault defends against, what it deliberately leaves to the device and its owner, and the tradeoffs chosen on purpose.
 
 **Encryption at rest:**
 

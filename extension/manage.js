@@ -1583,7 +1583,7 @@ chrome.runtime.onMessage.addListener((request) => {
   if (request && request.action === 'vaultSynced') { refreshAfterSync(); refreshUniVault() }
 })
 
-const PASSPHRASE_TIP = 'Use four or more random words plus a number and a symbol, like copper-lantern-mosaic-drift7!. Capitalization matters.'
+const PASSPHRASE_TIP = 'At least 16 characters. Use four or more random words plus a number and a symbol, like copper-lantern-mosaic-drift7!. Capitalization matters.'
 const ANSWER_TIP = 'One word. Capitalization matters.'
 
 async function setupKeyPackage(mk, isChange) {
@@ -1600,7 +1600,7 @@ async function setupKeyPackage(mk, isChange) {
   })
   return formDialog({
     title: isChange ? 'Change key protection' : 'Protect your master key',
-    text: (isChange ? 'This replaces the passphrase and answers for new key shares and key files. Key files you already saved keep their old passphrase. ' : 'Your master key only leaves this device wrapped under a passphrase and three security answers. Another device must enter all of them to accept it. You set this once; Share Master Key and Export Key reuse it. ') + 'Pick questions you will always remember the answers to. A lost passphrase or answer cannot be recovered.',
+    text: (isChange ? 'This replaces the passphrase and answers for new key shares and key files. Key files you already saved keep their old passphrase. ' : 'Your master key only leaves this device wrapped under a passphrase, plus three additional answers. Another device must enter all of them to accept it. You set this once; Share Master Key and Export Key reuse it. ') + 'Choose the questions whose answers you think no one else could know. Answers to easier questions can be easier to remember, but some questions are naturally more private than others, and those are the ones to choose. The best three are different for every person. A lost passphrase or answer cannot be recovered.',
     fields,
     okLabel: 'Save',
     busyLabel: 'Securing...',

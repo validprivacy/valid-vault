@@ -422,7 +422,7 @@
       <div id="tab-sync" class="panel">
         <h1>Sync</h1>
         <h2>Share</h2>
-        <p class="lead">Show a QR for another device to scan. The vault stays encrypted under your master key, and the master key is wrapped under your passphrase and three security answers, so the receiving device must enter them before it can use the key. The vault QR carries bookmarks and crypto wallets too, encrypted under your master key like a vault file.</p>
+        <p class="lead">Show a QR for another device to scan. The vault stays encrypted under your master key, and the master key is wrapped under your passphrase, plus three additional answers, so the receiving device must enter them before it can use the key. The vault QR carries bookmarks and crypto wallets too, encrypted under your master key like a vault file.</p>
         <div class="btn-row">
           <button id="btn-share-vault">Share Vault</button>
           <button id="btn-share-key" class="secondary">Share Master Key</button>
@@ -462,13 +462,31 @@
         </div>
         <div class="setting">
           <div class="setting-label">Auto-lock timeout (seconds)</div>
-          <div class="setting-desc">Idle seconds before the vault locks, from 10 seconds to 2 hours. The timer runs while the app is open; Android may pause it in the background.</div>
+          <div class="setting-desc">Idle seconds before the vault locks, from 10 seconds to 2 hours. The timer runs while the app is open; Android may pause it in the background, so also choose when the vault locks after you leave the app below.</div>
           <div class="time-input"><input type="number" inputmode="numeric" min="10" max="7200" value="60" id="input-autolock-timeout"><span class="time-readout" id="readout-autolock-timeout">00h 01m 00s</span></div>
+        </div>
+        <div class="setting">
+          <div class="setting-label">Lock when you leave the app</div>
+          <div class="setting-desc">How long the vault stays unlocked after you switch to another app or turn off the screen. Choosing a file, sharing a file, or confirming your fingerprint does not count as leaving.</div>
+          <select id="select-background-lock">
+            <option value="0">Right away</option>
+            <option value="30">After 30 seconds</option>
+            <option value="120">After 2 minutes</option>
+            <option value="-1">Only after the idle timeout</option>
+          </select>
         </div>
         <div class="setting">
           <div class="setting-label">QR stream timeout (seconds)</div>
           <div class="setting-desc">Seconds a shared QR stays visible before it closes on its own.</div>
           <div class="time-input"><input type="number" inputmode="numeric" min="5" max="600" value="30" id="input-qr-timeout"><span class="time-readout" id="readout-qr-timeout">00m 30s</span></div>
+        </div>
+        <div class="setting hidden" id="screenshot-setting">
+          <div class="setting-label">Screenshots and app previews</div>
+          <div class="setting-desc">Blocked by default, so Android's recent apps list shows a blank card instead of your unlocked vault, and screenshots and screen recordings of Valid Vault and its private browser come out blank. Allow them only while you need them. The autofill screen stays blocked either way.</div>
+          <select id="select-screenshots">
+            <option value="blocked">Blocked</option>
+            <option value="allowed">Allowed</option>
+          </select>
         </div>
         <h2>Password Generator</h2>
         <div class="setting">
@@ -616,9 +634,10 @@
         <details>
           <summary>Unlocking and auto-lock</summary>
           <div class="body">
-            <p>Fingerprint or device PIN is the quickest way in. The secret stays in the phone's secure hardware. A master password works as a backup.</p>
+            <p>Fingerprint or device PIN is the quickest way in. The secret stays in the phone's secure hardware on phones that have it. A master password works as a backup.</p>
             <p>If you add a new fingerprint to your phone, Android resets Valid Vault's fingerprint unlock for safety. Unlock with your password, then re-enroll in Manage.</p>
-            <p>The vault locks after the idle time in Settings, or when you tap Lock.</p>
+            <p>The vault locks after the idle time in Settings, or when you tap Lock. It also locks after you leave the app, 30 seconds later unless you change Lock when you leave the app in Settings. Choosing a file, sharing a file, or confirming your fingerprint does not count as leaving.</p>
+            <p>Screenshots, screen recordings, and Android's recent apps preview of Valid Vault and its private browser are blocked, so the app switcher shows a blank card instead of your vault. To take a screenshot, set Settings, Screenshots and app previews to Allowed, and set it back when you are done.</p>
           </div>
         </details>
         <details>

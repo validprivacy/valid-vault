@@ -34,7 +34,7 @@ The full detail is in [README.md](README.md), the plan in [ROADMAP.md](ROADMAP.m
 
 * A Manifest V3 extension for Chromium browsers, and an Android app through Capacitor with native plugins for fingerprint unlock, autofill, file saving, and a private browser
 * One shared codebase, bundled by build.js into a single self-contained file for the phone, with every library vendored and no network requests from the vault
-* 149 automated tests, run with `npm test`
+* 168 automated tests, run with `npm test`
 
 ## Build and test
 
@@ -58,6 +58,7 @@ Valid Vault is licensed under FSL-1.1-ALv2. You may read, run, modify, and share
 * [Valid Vault on the Valid Privacy site](https://validprivacy.github.io/vault.html)
 * [User Guide](https://validprivacy.github.io/vault-guide.html)
 * [Privacy Policy](https://validprivacy.github.io/vault-privacy.html)
+* [Threat model](THREAT_MODEL.md)
 * [Valid Discord](https://discord.gg/2SP383cJs9)
 
 Copyright (c) 2025-2026 Michael Carter

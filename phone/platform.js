@@ -4,6 +4,26 @@ const ALIAS_A = 'valid_vault_biometric_key_a'
 const ALIAS_B = 'valid_vault_biometric_key_b'
 const FILE_ACCEPT = '.vaultkey,.vault,application/json,application/octet-stream,text/plain'
 const CACHE_DIRECTORY = 'CACHE'
+const AWAY_TASK_MAX_MS = 600000
+const awayTask = { since: 0 }
+
+function markAwayTask() {
+  awayTask.since = Date.now()
+}
+
+function endAwayTask() {
+  awayTask.since = 0
+}
+
+function awayTaskActive() {
+  return awayTask.since > 0 && Date.now() - awayTask.since < AWAY_TASK_MAX_MS
+}
+
+function takeAwayTask() {
+  const active = awayTaskActive()
+  awayTask.since = 0
+  return active
+}
 
 function plugin(name) {
   try {
@@ -61,11 +81,14 @@ async function biometricEnroll(masterKey, currentRecord) {
   try {
     const raw = new Uint8Array(await crypto.subtle.exportKey('raw', masterKey))
     const alias = nextAlias(currentRecord)
+    markAwayTask()
     const r = await bv.enroll({ masterKey: bytesToBase64(raw), alias })
     raw.fill(0)
     return { success: true, record: { wrapped: r.wrapped, iv: r.iv, alias: r.alias || alias } }
   } catch (e) {
     return { success: false, code: errorCode(e), error: errorMessage(e) }
+  } finally {
+    endAwayTask()
   }
 }
 
@@ -76,6 +99,7 @@ async function biometricUnlock(record) {
   try {
     const args = { wrapped: record.wrapped, iv: record.iv }
     if (record.alias) args.alias = record.alias
+    markAwayTask()
     const r = await bv.unlock(args)
     const raw = base64ToBytes(r.masterKey)
     const masterKey = await masterKeyToCryptoKey(raw)
@@ -83,6 +107,8 @@ async function biometricUnlock(record) {
     return { success: true, masterKey }
   } catch (e) {
     return { success: false, code: errorCode(e), error: errorMessage(e) }
+  } finally {
+    endAwayTask()
   }
 }
 
@@ -123,8 +149,10 @@ async function shareFile(filename, text) {
   if (!fs || !share) throw new Error('Sharing files is not available on this device')
   const written = await fs.writeFile({ path: filename, data: text, directory: CACHE_DIRECTORY, encoding: 'utf8' })
   try {
+    markAwayTask()
     await share.share({ title: filename, url: written.uri, dialogTitle: 'Send ' + filename })
   } finally {
+    endAwayTask()
     try { await fs.deleteFile({ path: filename, directory: CACHE_DIRECTORY }) } catch (e) {}
   }
   return true
@@ -308,6 +336,24 @@ async function holdScreen(on) {
   } catch (e) {}
 }
 
+async function screenshotStatus() {
+  const sp = plugin('ScreenPrivacy')
+  if (!sp) return null
+  try {
+    const result = await sp.status()
+    return !!(result && result.allowed)
+  } catch (e) {
+    return null
+  }
+}
+
+async function setScreenshotsAllowed(allowed) {
+  const sp = plugin('ScreenPrivacy')
+  if (!sp) throw new Error('Screenshot protection is only available in the Android app')
+  const result = await sp.setAllowed({ allowed: !!allowed })
+  return !!(result && result.allowed)
+}
+
 async function openBrowserSearch() {
   const bb = plugin('BrowserBridge')
   if (!bb) throw new Error('The browser is not available on this device')
@@ -345,6 +391,11 @@ export {
   autofillCompleteInfo,
   setBrowserGenerator,
   holdScreen,
+  markAwayTask,
+  awayTaskActive,
+  takeAwayTask,
+  screenshotStatus,
+  setScreenshotsAllowed,
   autofillClose,
   autofillStatus,
   openAutofillSettings,
