@@ -442,7 +442,7 @@ What stands in front of a password guess today:
 * Key files and key QRs use 1,000,000 rounds under a passphrase screened against common passwords, plus three additional answers
 * Day-to-day unlock is fingerprint or device PIN through Android Keystore or WebAuthn, which involves no password derivation at all
 
-A switch would also bring migration, compatibility, and performance costs, and another cryptographic implementation to test, so it waits for a demonstrated benefit that outweighs them. Argon2id will be reconsidered if browsers add it to WebCrypto. The switch would follow the same pattern as the single-blob migration: an encrypted backup first, then conversion, verification, and rollback on any mismatch.
+A switch would also bring migration, compatibility, and performance costs, and another cryptographic implementation to test, so it waits for a demonstrated benefit that outweighs them. Argon2id will only be reconsidered if browsers add it to WebCrypto. The switch would follow the same pattern as the single-blob migration: an encrypted backup first, then conversion, verification, and rollback on any mismatch.
 
 ### Why key files add three answers to the passphrase
 
