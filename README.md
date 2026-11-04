@@ -387,7 +387,7 @@ Seed phrases are the highest-value secret most people own, and the common places
 * Malware that reaches the browser gets very little. Valid Vault never puts a password on the clipboard, where most password stealers look, the master key stays in the extension's background and never enters a web page, seed phrases and bookmarks are never sent to any page, and unlocking happens in Valid Vault's own window. The most it can reach is what autofill places into a page, one login at a time, only on the site that login belongs to, and the password lands masked. Malware with full control of the operating system can watch anything on that computer, as with any software, which auto-lock, hide-on-blur, and a kept-updated system round out.
 * Physical access is covered in layers. An unlocked vault still asks for fingerprint, PIN, or password before showing anything in Manage, changing unlock methods, or clearing the vault, and taking the vault anywhere else needs the master key, which only leaves a device behind a passphrase, plus three additional answers. What remains is someone learning those secrets, for example by watching you type them, and the rule for that is the oldest one in security: never show or tell anyone your password.
 
-## Quick Start - Forks and Experimentation Highly Encouraged!
+## Quick Start - Build and Run It Yourself
 
 ### Prerequisites
 
