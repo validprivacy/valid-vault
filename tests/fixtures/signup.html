@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Test Signup</title>
+<script type="module" src="/background.js"></script>
+<script src="/content.js"></script>
+</head><body>
+<form id="f" onsubmit="event.preventDefault()">
+<label for="e">Email</label><input id="e" type="email" name="email" autocomplete="email">
+<label for="d">Display Name</label><input id="d" type="text" name="global_name">
+<label for="u">Username</label><input id="u" type="text" name="username" autocomplete="username">
+<label for="p">Password</label><input id="p" name="password" type="password" autocomplete="new-password">
+<div>Date of Birth</div>
+<button id="month" type="button" aria-haspopup="listbox">Month</button>
+<div role="combobox" aria-label="Day"><button id="day" type="button">Day</button></div>
+<button id="year" type="button">Year</button>
+<button id="go" type="submit">Create Account</button>
+</form>
+</body></html>

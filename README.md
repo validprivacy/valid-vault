@@ -27,6 +27,10 @@ A local, encrypted, QR code portable password manager that works without a cloud
 >
 > Every push now runs the full test suite on GitHub Actions, with the result shown by the Tests badge at the top, along with a check that the phone bundle matches the source byte for byte and a dependency audit. Fuzz tests feed thousands of damaged vault files, key files, and QR frames to the parsers and confirm each one is refused cleanly without touching the vault. SECURITY.md sets out how to report a vulnerability. Capacitor is updated to 7.6.10 for a WebView navigation fix. A new [You Are the Custodian](#you-are-the-custodian) section explains self-custody, and the docs say plainly that login phishing protection needs no block list. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
+> ✅ **Signup Forms Fixed - v0.9.4.5**
+>
+> Opening a dropdown on a signup form, like a birthday picker, no longer brings up the save prompt as if the form had been sent, so signups such as Discord's can be finished. The save prompt now asks only when a form is really submitted, and it closes when you click outside it or press Escape, the same as Not now. See [CHANGELOG.md](CHANGELOG.md) for full details.
+
 ---
 
 ## What is Valid Vault?
@@ -229,9 +233,9 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * Single-file web bundle - build.js bundles the phone app from the extension's own modules into one self-contained HTML file, so both clients share one copy of the core code
 * Android via Capacitor, with native plugins for biometric auth, file saving, autofill, sharing, and the private browser
 * Every library is vendored into the bundle, and the scan path runs without Google SDKs
-* 174 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
+* 184 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
 
-## Current Status: v0.9.4.4 - Final Bug Fixes and Polish
+## Current Status: v0.9.4.5 - Final Bug Fixes and Polish
 
 **Completed:**
 
@@ -287,7 +291,7 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * ✅ New look on the phone: day and night modes, the striped V, raised and recessed design, redrawn start page backgrounds, and day and night widgets
 * ✅ Encrypted backup copy in the extension that restores the vault after the browser clears site data
 * ✅ New look in the extension: day and night modes, the striped V, and the raised and recessed design across the popup, Manage, the bookmarks panel, the User Guide, and the V tags on websites
-* ✅ 174 automated tests for the extension and the phone app, public in the repository and run with `npm test`
+* ✅ 184 automated tests for the extension and the phone app, public in the repository and run with `npm test`
 * ✅ Deletes win same-moment conflicts on every synced section, trusted browsers checked by signing certificate, and extra fields chosen one by one in the save prompt
 * ✅ Crypto wallets travel in the vault QR with the rest of the vault
 * ✅ 2FA codes on logins: typed setup key or scanned QR, live codes in Manage and the phone app, a V tag on code boxes, Android Autofill for code boxes, and imports from Bitwarden, 1Password, and CSV
@@ -509,6 +513,16 @@ Edge keeps Chrome Web Store extensions updated automatically, the same as Chrome
 Publishing on Edge Add-ons requires registering through Microsoft Partner Center, and its registration form demands a street address, phone number, and contact details, presenting the address as one "customers view in your developer profile." It asks this of a single person publishing a free extension, using a form written for companies, and offers no address-free path for individuals.
 
 Valid Vault exists to keep personal data off other people's servers. Requiring a developer to file a home address in a corporate database, tied to a public publisher name, as the price of listing a free privacy tool runs directly against that. So the answer is **no**. Edge users lose nothing: the Chrome Web Store version is the same extension, reviewed and updated through Google's store, and it installs in Edge via Chrome Store rather than the Edge add-ons extension storefront.
+
+## For Organizations
+
+Valid Vault keeps every password on your own devices, with no vendor server holding a copy. For tribal nations, clinics, government contractors, and any team that treats cloud-stored credentials as a liability, your data stays under your control.
+
+* **Free for internal use:** the license lets any organization run Valid Vault internally at no cost
+* **Deployment help:** setting up Valid Vault across your staff's browsers and Android phones, with a plan for backups and for moving vaults between devices
+* **Direct support:** questions and issues go straight to the engineer who wrote the code
+
+Contact byrook@proton.me with the subject "Valid Vault for organizations."
 
 ## Community
 

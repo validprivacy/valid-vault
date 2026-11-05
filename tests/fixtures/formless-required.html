@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Test Formless Signup</title>
+<script type="module" src="/background.js"></script>
+<script src="/content.js"></script>
+</head><body>
+<div id="box">
+<label for="u">Username</label><input id="u" type="text" name="username" autocomplete="username">
+<label for="p">Password</label><input id="p" name="password" type="password" autocomplete="new-password">
+<label for="code">Invite code</label><input id="code" type="text" name="invite" required>
+<button id="pick" type="button" aria-expanded="false">Choose a region</button>
+<button id="go" type="button">Sign up</button>
+</div>
+</body></html>

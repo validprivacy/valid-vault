@@ -14,7 +14,7 @@
 * ✅ Capacitor updated to 7.6.10 for a WebView navigation fix, and build tool dependencies updated
 * ✅ A self-custody section in the README and a design decision on why you are the custodian of your vault
 * ✅ Login phishing protection described as needing no block list, and the EasyList snapshot dated in its notice
-* ✅ 174 automated tests
+* ✅ 184 automated tests
 
 ### v0.9.4.3 - Lock and Clear Hardening (Nov 2026)
 

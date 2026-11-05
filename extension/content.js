@@ -638,9 +638,15 @@
     }
     if (locked) showLocked()
     else showUnlocked()
+    if (savePrompt.keyListener) document.removeEventListener('keydown', savePrompt.keyListener, true)
     savePrompt.host.style.display = 'block'
     let busy = false
+    let closed = false
     const close = () => {
+      if (closed) return
+      closed = true
+      document.removeEventListener('keydown', keyListener, true)
+      if (savePrompt.keyListener === keyListener) savePrompt.keyListener = null
       savePrompt.host.style.display = 'none'
       showUnlocked()
       if (pendingId) { try { chrome.runtime.sendMessage({ action: 'resolvePendingSave', id: pendingId }) } catch (e) {} }
@@ -672,7 +678,14 @@
     }
     shadow.getElementById('sp-cancel').onclick = (e) => { if (e.isTrusted) close() }
     saveBtn.onclick = (e) => { if (e.isTrusted) doSave() }
-    shadow.getElementById('backdrop').onclick = null
+    shadow.getElementById('backdrop').onclick = (e) => { if (e.isTrusted && e.target === e.currentTarget && !busy) close() }
+    const keyListener = (e) => {
+      if (!e.isTrusted || e.key !== 'Escape' || busy) return
+      e.stopPropagation()
+      close()
+    }
+    savePrompt.keyListener = keyListener
+    document.addEventListener('keydown', keyListener, true)
   }
 
   async function maybePromptSave(domain, u, p, extras, pendingId, loginType) {
@@ -784,12 +797,55 @@
     return null
   }
 
+  const CONTROL_ROLES = new Set(['combobox', 'listbox', 'option', 'menu', 'menuitem', 'menuitemcheckbox', 'menuitemradio', 'tab', 'switch', 'checkbox', 'radio', 'spinbutton', 'slider'])
+
+  function isPickerControl(path, button) {
+    const end = path.indexOf(button)
+    for (let i = 0; i <= end; i++) {
+      const n = path[i]
+      if (!n || n.nodeType !== 1) continue
+      const role = (n.getAttribute('role') || '').toLowerCase()
+      if (CONTROL_ROLES.has(role)) return true
+      const popup = n.getAttribute('aria-haspopup')
+      if (popup && popup !== 'false') return true
+      if (n.hasAttribute('aria-expanded')) return true
+    }
+    return !!(button.closest && button.closest('[role="combobox"], [role="listbox"], [role="menu"]'))
+  }
+
+  function isSubmitControl(el) {
+    if (el.tagName === 'INPUT') return el.type === 'submit' || el.type === 'image'
+    if (el.tagName === 'BUTTON') return (el.getAttribute('type') || 'submit').toLowerCase() === 'submit'
+    return false
+  }
+
+  function isNonSubmitButtonInForm(button, form) {
+    if (!form || isSubmitControl(button)) return false
+    for (const el of form.querySelectorAll('button, input[type="submit"], input[type="image"]')) {
+      if (isSubmitControl(el) && el.offsetParent !== null) return true
+    }
+    return false
+  }
+
+  function hasMissingRequiredField(container) {
+    if (!container || !container.querySelectorAll) return false
+    for (const el of container.querySelectorAll('input, select, textarea')) {
+      if (!el.required || el.disabled || el.type === 'hidden' || el.offsetParent === null) continue
+      if (el.validity && el.validity.valueMissing) return true
+    }
+    return false
+  }
+
   function wireSubmitCapture(formFields) {
     const password = formFields.password
     const form = composedForm(password)
     const container = form || findFormlessContainer(password)
 
-    const submitHandler = function () { captureAndPrompt(formFields) }
+    const submitHandler = function (e) {
+      const submitter = e && e.submitter
+      if (submitter && isPickerControl([submitter], submitter)) return
+      captureAndPrompt(formFields)
+    }
     if (form) form.addEventListener('submit', submitHandler, true)
 
     const keydownHandler = function (e) {
@@ -801,8 +857,11 @@
       const path = e.composedPath ? e.composedPath() : [e.target]
       const t = path.find((n) => n && (n.tagName === 'BUTTON' || (n.tagName === 'INPUT' && (n.type === 'submit' || n.type === 'button'))))
       if (!t) return
+      if ((t.getAttribute('type') || '').toLowerCase() === 'reset') return
+      if (isPickerControl(path, t)) return
+      if (isNonSubmitButtonInForm(t, form)) return
       const belongsToThisForm = container ? composedContains(container, t) : true
-      if (belongsToThisForm && password.value) {
+      if (belongsToThisForm && password.value && !hasMissingRequiredField(container)) {
         setTimeout(() => captureAndPrompt(formFields), 50)
       }
     }

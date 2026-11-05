@@ -5,6 +5,22 @@ All notable changes to Valid Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4.5] - 2026-11-05
+
+Signup forms with dropdowns can be finished again, and the save prompt closes the way a prompt should.
+
+### Fixed
+
+* **Dropdowns no longer count as submitting a form.** Opening a dropdown on a signup page with the password already typed, such as the date of birth on Discord's signup, brought up the save prompt as if the form had been sent, and the prompt came back each time, so the signup could not be finished. The extension now ignores buttons that open a list or menu, buttons that are not the form's submit button when the form has one, and clicks while a required field is still empty. The real submit button still offers to save the login.
+
+### Changed
+
+* **The save prompt closes from outside.** Clicking outside the save prompt or pressing Escape now closes it the same as Not now. Before, only the buttons closed it. While the prompt is waiting for an unlock, it stays open.
+
+### Added
+
+* **Signup prompt tests.** Ten tests cover dropdowns, comboboxes, plain buttons, required fields on pages without a form, and closing the save prompt by clicking outside or pressing Escape, bringing the total to 184.
+
 ## [0.9.4.4] - 2026-11-04
 
 Every push now runs the full test suite in the open, the vault, key, and QR parsers are fuzz tested, and the docs explain self-custody and the private browser's phishing protection plainly.

@@ -1,7 +1,7 @@
 {
   "name": "valid-vault",
   "license": "SEE LICENSE IN LICENSE.md",
-  "version": "0.9.4.4",
+  "version": "0.9.4.5",
   "description": "Local password manager with fingerprint authentication",
   "scripts": {
     "test": "node --test \"tests/*_test.mjs\""
