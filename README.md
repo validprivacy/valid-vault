@@ -516,7 +516,7 @@ Valid Vault exists to keep personal data off other people's servers. Requiring a
 
 ## For Organizations
 
-Valid Vault keeps every password on your own devices, with no vendor server holding a copy. For tribal nations, clinics, government contractors, and any team that treats cloud-stored credentials as a liability, your data stays under your control.
+Valid Vault keeps every password on your own devices, with no vendor server holding a copy. For clinics, contractors, and any team that treats cloud-stored credentials as a liability, your data stays under your control.
 
 * **Free for internal use:** the license lets any organization run Valid Vault internally at no cost
 * **Deployment help:** setting up Valid Vault across your staff's browsers and Android phones, with a plan for backups and for moving vaults between devices
