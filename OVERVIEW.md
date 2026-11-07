@@ -60,6 +60,6 @@ Valid Vault is licensed under FSL-1.1-ALv2. You may read, run, modify, and share
 * [Privacy Policy](https://validprivacy.github.io/vault-privacy.html)
 * [Threat model](THREAT_MODEL.md)
 * [Security policy](SECURITY.md)
-* [Valid Discord](https://discord.gg/2SP383cJs9)
+* [Valid Discord](https://discord.gg/XSgqs4uuBa)
 
 Copyright (c) 2025-2026 Michael Carter

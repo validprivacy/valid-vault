@@ -15,7 +15,7 @@ A local, encrypted, QR code portable password manager that works without a cloud
 
 **Microsoft Edge:** fully compatible, installed from the Chrome Web Store. Valid Vault is deliberately not on Microsoft's Edge Add-ons store. See [Using Valid Vault on Microsoft Edge](#using-valid-vault-on-microsoft-edge) for the two-minute install and the reason why.
 
-**Community:** updates, support, and bug reports on the [Valid Vault Discord](https://discord.gg/2SP383cJs9).
+**Community:** updates, support, and bug reports on the [Valid Vault Discord](https://discord.gg/XSgqs4uuBa).
 
 ---
 
@@ -491,7 +491,7 @@ Some are rare:
 * Open water can bring jellyfish, dolphins, a manta ray, a shark, or, about 1 in 33, a whale
 * About 1 in 8 dandelion skies has a sun, and the city sometimes has hover cars or a pixel moon
 
-Like one? Tap Save it to Downloads under the start page tiles. The file is named with its style and seed, like valid-vault-underwater-1a2b3c4d.png. Styles that come in both modes have a night version named with night in front, like nightfractal, so every name points to exactly one style. Each file name ends in its seed, the 8 or so characters after the style, and a future update will let you share a background and draw it from that seed alone. Collecting them is encouraged, so share your collections and your rarest finds on the [Valid Vault Discord](https://discord.gg/2SP383cJs9). They also make great, unique backgrounds for your phone.
+Like one? Tap Save it to Downloads under the start page tiles. The file is named with its style and seed, like valid-vault-underwater-1a2b3c4d.png. Styles that come in both modes have a night version named with night in front, like nightfractal, so every name points to exactly one style. Each file name ends in its seed, the 8 or so characters after the style, and a future update will let you share a background and draw it from that seed alone. Collecting them is encouraged, so share your collections and your rarest finds on the [Valid Vault Discord](https://discord.gg/XSgqs4uuBa). They also make great, unique backgrounds for your phone.
 
 **What a saved background carries:** only the picture. The file holds the image size and the pixels, without EXIF data, a date, device or app details, a location, or text fields. To keep a design private, remove the seed from the file name before you share it. The image is drawn at your screen's size, which is the one hint about what kind of phone made it. Android notes the save in your phone's own Downloads list, and that record stays on the phone.
 
@@ -526,7 +526,7 @@ Contact byrook@proton.me with the subject "Valid Vault for organizations."
 
 ## Community
 
-Join the [Valid Vault Discord](https://discord.gg/2SP383cJs9) for release announcements, support, and bug reports.
+Join the [Valid Vault Discord](https://discord.gg/XSgqs4uuBa) for release announcements, support, and bug reports.
 
 ## Related Projects
 
@@ -550,7 +550,7 @@ Contributions welcome. This project maintains a compact, readable codebase with 
 * Run `npm test` before opening a pull request, and add tests for new behavior in the matching file in `tests/`
 
 **Join the Discord** Join the Discord for release announcements, setup help, and a direct line to report bugs or request features.
-https://discord.gg/2SP383cJs9
+https://discord.gg/XSgqs4uuBa
 
 ## Security
 
