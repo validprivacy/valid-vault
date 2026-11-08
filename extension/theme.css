@@ -49,6 +49,9 @@ body { font-family: var(--font-ui); color: var(--text); }
   background: linear-gradient(180deg, var(--sink-top), var(--sink-bottom)) padding-box, linear-gradient(135deg, var(--rim-a), var(--rim-b)) border-box;
   box-shadow: inset 0 3px 7px var(--inner), 0 2px 0 var(--drop);
 }
+#vault-notice p { margin: 0; line-height: 1.45; }
+#vault-notice p + p { margin-top: 8px; }
+.panel#vault-notice { color: var(--danger); font-size: 12px; }
 .panel-title { color: var(--text-dim); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px; }
 .or { display: flex; align-items: center; gap: 10px; color: var(--text-dim); font-size: 11px; letter-spacing: 0.12em; margin: 14px 2px; }
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--green-faint); }

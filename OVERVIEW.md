@@ -28,13 +28,13 @@ The full detail is in [README.md](README.md), the plan in [ROADMAP.md](ROADMAP.m
 * **Key transfer.** The master key only leaves a device wrapped under a passphrase, plus three additional answers, stretched with 1,000,000 rounds.
 * **Files.** The vault and the key export as separate encrypted files, for backups or a USB drive.
 * **Uni-Vault.** Browsers on one computer can share one encrypted vault file and stay in sync on their own.
-* **Merging.** Every merge is checked in full before anything is written, deletes carry to every device, and both devices must hold the same master key.
+* **Merging.** Every merge is checked in full before anything is written, deletes carry to every device, and both devices must hold the same master key. A merge that stops partway is reported and finished by the next sync.
 
 ## Platform
 
 * A Manifest V3 extension for Chromium browsers, and an Android app through Capacitor with native plugins for fingerprint unlock, autofill, file saving, and a private browser
 * One shared codebase, bundled by build.js into a single self-contained file for the phone, with every library vendored and no network requests from the vault
-* 184 automated tests, run with `npm test`
+* 190 automated tests, run with `npm test`
 
 ## Build and test
 
@@ -60,6 +60,6 @@ Valid Vault is licensed under FSL-1.1-ALv2. You may read, run, modify, and share
 * [Privacy Policy](https://validprivacy.github.io/vault-privacy.html)
 * [Threat model](THREAT_MODEL.md)
 * [Security policy](SECURITY.md)
-* [Valid Discord](https://discord.gg/XSgqs4uuBa)
+* [Valid Discord](https://discord.gg/2SP383cJs9)
 
 Copyright (c) 2025-2026 Michael Carter

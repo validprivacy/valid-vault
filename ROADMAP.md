@@ -1,10 +1,18 @@
 # Valid Vault - Development Roadmap
 
-**Current Version:** v0.9.4.4 - **Status: Late Beta**
+**Current Version:** v0.9.4.6 - **Status: Late Beta**
 
 ---
 
 ## Version History (Completed)
+
+### v0.9.4.6 - Safer Sync and Restore (Nov 2026)
+
+* ✅ A sync records that it is in progress before writing and clears the record when every section is written
+* ✅ A sync that stops partway says so, and Manage, the popup, and the phone app show it did not finish until the same vault is synced again
+* ✅ A failed save to the extension's backup copy is recorded, and the copy is rebuilt on the next save or the next start
+* ✅ A restore from the backup copy is reported with the copy's date, and says when newer changes are missing
+* ✅ 190 automated tests
 
 ### v0.9.4.4 - Tested in the Open (Nov 2026)
 
@@ -91,6 +99,7 @@
 * ✅ Start page backgrounds redrawn and split by mode, 11 for day and 12 for night, with rare versions hidden in some
 * ✅ Day and night versions of the search and 4x2 widgets, and 1x1 icon widgets that open the app
 * ✅ Encrypted backup copy in the extension that restores the vault after the browser clears site data, with a linked Uni-Vault file reconnected after unlock
+* ✅ A backup copy that repairs itself after a failed save and reports when it was used, and a sync that is finished by the next sync if it stops partway
 * ✅ Renaming the key and vault offers new key and vault files under the new name
 * ✅ Uni-Vault writes merged changes back to the linked file right away
 * ✅ Drawn lock icons, neutral success messages, and more leftover code removed
@@ -510,6 +519,23 @@ The extension keeps an encrypted backup copy of the vault in browser storage, so
 * If clearing the vault fails after the backup copy is gone, the vault is still there and visible, the backup copy is rebuilt from it on the next start, and Clear Vault reports an error
 * A crash at any point leaves either the whole vault or nothing, never a vault that was reported cleared and comes back later
 * A marker saying a clear is pending was considered and left out. If a marker could not be removed, every later start would clear the vault again, including a new vault set up afterward
+
+### Why a sync records itself before writing
+
+A sync writes the vault's sections one after another: logins, misc credentials, personal info, bookmarks, and wallets. Each write is complete on its own, so a storage failure between two of them leaves every section readable, with some merged and some not. Merging goes by timestamps, so running the same sync again finishes the job without duplicates.
+
+* Before the first write, a sync records that it is in progress, and the record is cleared once every section is written
+* If a write fails after another has finished, the error says the sync stopped partway. If the first write fails, nothing changed, the record is cleared, and the original error is shown
+* While the record is there, Manage, the popup, and the phone app say the last sync did not finish
+* Writing every section in one transaction was considered and left out. Each section is encrypted and written by its own module, so one transaction would mean rerouting every section's save path, while the record and the timestamp merge already reach the same end state: either the sync finishes, or the owner is told and the next sync finishes it
+
+### Why the backup copy keeps track of its own age
+
+The extension's backup copy in browser storage is what brings the vault back if the browser clears site data, so a copy that is quietly out of date is worse than none. Each save to the copy records when it happened, and each vault change records the same time.
+
+* A save to the copy that fails is recorded, and the copy is rebuilt from the vault on the next save, or on the next start if the vault changed after the copy's last save
+* A restore from the copy is never silent. The notice gives the copy's date and says whether anything newer is missing, so the owner knows to sync from another device or import a vault file
+* The notice clears after the next sync, or after 14 days
 
 ### Why you are the custodian of your vault
 

@@ -5,6 +5,20 @@ All notable changes to Valid Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4.6] - 2026-11-08
+
+A sync that stops partway now says so and finishes on the next try, and the extension's backup copy repairs itself and tells you when it was used.
+
+### Fixed
+
+* **The backup copy repairs itself.** The extension keeps an encrypted backup copy of the vault in browser storage. If a save to that copy failed, the failure was ignored, so the copy could fall behind without anyone knowing, and a later restore would bring back older data. A failed save is now recorded, and the copy is rebuilt from the vault on the next save, or on the next start if the browser closes first.
+
+### Added
+
+* **Unfinished sync notice.** A sync writes each section of the vault in turn: logins, misc credentials, personal info, bookmarks, and wallets. It now records that a sync is in progress before writing, and clears that record once every section is written. If a sync stops partway, the error says so, and Manage, the popup, and the phone app show that the last sync did not finish until the same vault is synced again. Each section is written whole, so a sync that stops partway never damages the vault.
+* **Restore notice.** When the browser loses its saved vault data and the extension restores the vault from its backup copy, Manage and the popup say so, with the date the copy was made. If changes were made after that, the notice says they are missing on this device and how to get them back. The notice clears after the next sync, or after 14 days.
+* **Sync and backup tests.** Six tests break storage on purpose: a save to the backup copy that fails, a browser that loses its vault data, and a sync that stops between sections or before the first one. Each test was checked by breaking the fix and confirming the test fails, bringing the total to 190.
+
 ## [0.9.4.5] - 2026-11-05
 
 Signup forms with dropdowns can be finished again, and the save prompt closes the way a prompt should.

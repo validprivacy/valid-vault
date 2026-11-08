@@ -4,6 +4,7 @@ import * as session from './session.js'
 import * as bookmarks from './bookmarks.js'
 import { masterKeyToCryptoKey } from './crypto.js'
 import * as uniVault from './linkedvault.js'
+import { vaultNotices } from './vaultfile.js'
 
 const MASTER_KEY_LENGTH = 32
 const SIDE_WINDOW_WIDTH = 380
@@ -79,7 +80,16 @@ function showView(view) {
   viewLocked.classList.add('hidden')
   viewUnlocked.classList.add('hidden')
   view.classList.remove('hidden')
-  if (view === viewUnlocked) checkUniVault()
+  if (view === viewUnlocked) { checkUniVault(); checkVaultNotices() }
+}
+
+const vaultNoticeBox = document.getElementById('vault-notice')
+
+async function checkVaultNotices() {
+  let notices = []
+  try { notices = await vaultNotices() } catch (e) {}
+  vaultNoticeBox.replaceChildren(...notices.map((text) => { const p = document.createElement('p'); p.textContent = text; return p }))
+  vaultNoticeBox.classList.toggle('hidden', !notices.length)
 }
 
 const uniVaultReconnectBox = document.getElementById('univault-reconnect')

@@ -17,6 +17,8 @@ const LOCAL_MISMATCH_MSG = 'The saved data on this device uses a different maste
 const NOT_VAULT_MSG = 'This is not a Valid Vault vault file. Nothing was changed.'
 const NEWER_VERSION_MSG = 'This vault file was made by a newer version of Valid Vault. Update this device, then import it again. Nothing was changed.'
 const DAMAGED_MSG = 'This vault file is damaged or incomplete. Nothing was changed.'
+const PARTIAL_SYNC_MSG = 'Sync stopped partway. Some sections were updated and the rest were not. Nothing was damaged. Sync the same vault again to finish.'
+const UNFINISHED_SYNC_MSG = 'The last sync on this device did not finish. Nothing was damaged. Sync the same vault again to finish it.'
 
 function isObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -235,12 +237,54 @@ async function planMerge(bundle, key) {
   return plan
 }
 
+function plannedSections(plan) {
+  return Object.keys(plan.sections).filter((name) => plan.sections[name])
+}
+
+async function finishSyncJournal() {
+  if (await store.getSyncJournal()) await store.clearSyncJournal()
+  await store.clearRestoreNotice()
+}
+
 async function mergeBundle(bundle, key) {
   const checked = Object.assign({}, bundle, checkSections(bundle))
   const plan = await planMerge(checked, key)
-  for (const write of plan.writes) await write()
+  if (plan.writes.length) {
+    await store.setSyncJournal({ startedAt: Date.now(), sections: plannedSections(plan) })
+    let done = 0
+    try {
+      for (const write of plan.writes) {
+        await write()
+        done++
+      }
+    } catch (e) {
+      if (done === 0) {
+        try { await store.clearSyncJournal() } catch (err) {}
+        throw e
+      }
+      throw new Error(PARTIAL_SYNC_MSG)
+    }
+  }
+  try { await finishSyncJournal() } catch (e) {}
   if (plan.writes.length) await bindSections(key)
   return { changed: plan.writes.length > 0, sections: plan.sections }
+}
+
+function formatNoticeDate(stamp) {
+  if (!stamp) return 'an earlier date'
+  return new Date(stamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+async function vaultNotices() {
+  const notices = []
+  try { if (await store.getSyncJournal()) notices.push(UNFINISHED_SYNC_MSG) } catch (e) {}
+  const restored = await store.getRestoreNotice()
+  if (restored) {
+    const when = formatNoticeDate(restored.savedAt)
+    if (restored.behind) notices.push('This browser lost its saved vault data, and Valid Vault restored it from the backup copy made ' + when + '. Changes made after that are missing on this device. Sync from another device or import your latest vault file to bring them back.')
+    else notices.push('This browser lost its saved vault data, and Valid Vault restored it from the backup copy made ' + when + '. That copy had your latest changes.')
+  }
+  return notices
 }
 
 function sealedRowIsBound(row) {
@@ -360,6 +404,9 @@ export {
   NOT_VAULT_MSG,
   NEWER_VERSION_MSG,
   DAMAGED_MSG,
+  PARTIAL_SYNC_MSG,
+  UNFINISHED_SYNC_MSG,
+  vaultNotices,
   parseBundle,
   bundleFromPayload,
   payloadFromBundle,

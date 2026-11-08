@@ -1144,10 +1144,20 @@ loadGeneratorSettings()
 const btnBackupSync = document.getElementById('btn-backup-sync')
 if (btnBackupSync) btnBackupSync.onclick = () => showTab('sync')
 
+async function refreshVaultNotices() {
+  const box = document.getElementById('vault-notice')
+  if (!box) return
+  let notices = []
+  try { notices = await vaultFile.vaultNotices() } catch (e) {}
+  box.replaceChildren(...notices.map((text) => { const p = document.createElement('p'); p.textContent = text; return p }))
+  box.classList.toggle('hidden', !notices.length)
+}
+
 async function init() {
   await restoreMasterKeyFromSession()
   if (!(await unlockManagePage())) return
   await loadAuthStatus()
+  refreshVaultNotices()
   await loadAllCredentials()
   
   const settings = await chrome.storage.local.get(['autoLockTimeout'])
@@ -1432,6 +1442,7 @@ async function importVaultText(text) {
     syncMsg(vaultFile.describeMerge(result), 'success')
     if (result.changed) refreshAfterSync()
   } catch (e) { syncMsg('Import failed: ' + (e && e.message ? e.message : e), 'error') }
+  refreshVaultNotices()
 }
 
 const _btnImportPasswords = document.getElementById('btn-import-passwords'); if (_btnImportPasswords) _btnImportPasswords.onclick = async function () {
@@ -1967,10 +1978,12 @@ async function handleImported(payloadText) {
       const result = await vaultFile.mergeBundle(vaultFile.bundleFromPayload(data), session.getMasterKey())
       syncMsg(vaultFile.describeMerge(result), 'success')
       if (result.changed) refreshAfterSync()
+      refreshVaultNotices()
       return
     }
     syncMsg('Unrecognized code', 'error')
   } catch (e) { syncMsg('Sync failed: ' + (e && e.message ? e.message : e), 'error') }
+  refreshVaultNotices()
 }
 
 init()

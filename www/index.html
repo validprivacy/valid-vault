@@ -75,6 +75,8 @@
     .hidden { display: none !important; }
     .msg { padding: 12px; margin: 12px 0; border-radius: 8px; font-size: 13px; line-height: 1.45; word-break: break-word; color: var(--text); }
     .msg.error { color: var(--danger); }
+    #vault-notice p { margin: 0; }
+    #vault-notice p + p { margin-top: 8px; }
     .enroll-row { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
     .enroll-row .label { flex: 1; color: var(--text); font-size: 14px; }
     .enroll-row .state { color: var(--green); font-size: 12px; }
@@ -358,6 +360,7 @@
 
       <div id="tab-manage" class="panel active">
         <h1>Manage Vault</h1>
+        <div id="vault-notice" class="msg error hidden" role="status"></div>
         <h2>Unlock Methods</h2>
         <p class="note">Keep at least one way to unlock: fingerprint or device PIN, or a master password. Having both is best, so one can stand in if the other stops working.</p>
         <div class="auth-methods">
@@ -666,7 +669,7 @@
         <p class="lead">Take back your data with the Valid ecosystem. Privacy should not come at a premium. Join the Discord to connect with other privacy-minded people.</p>
         <p class="lead">Regards,<br>Michael</p>
         <div class="about-links">
-          <button class="secondary block" data-link="https://discord.gg/XSgqs4uuBa">Discord</button>
+          <button class="secondary block" data-link="https://discord.gg/2SP383cJs9">Discord</button>
           <button class="secondary block" data-link="https://github.com/validprivacy/valid-vault">GitHub Repository</button>
           <button class="secondary block" data-link="https://validprivacy.github.io/vault.html">Website</button>
         </div>
@@ -10819,7 +10822,7 @@ self.onmessage = (event) => {
 <script>
 (function () {
 'use strict'
-const VALID_VAULT_VERSION = "0.9.4.5"
+const VALID_VAULT_VERSION = "0.9.4.6"
 const __modules = Object.create(null)
 __modules["extension/crypto.js"] = (function () {
 const SALT_LENGTH = 16
@@ -10998,10 +11001,16 @@ const VAULT_CHANGE_STAMP = 'vaultChangedAt'
 const MIRROR_PREFIX = 'vvMirror:'
 const MIRROR_READY_KEY = 'vvMirrorReady'
 const MIRROR_BYTES_TAG = '$vvBytes'
+const MIRROR_SAVED_KEY = 'vvMirrorSavedAt'
+const MIRROR_FAILED_KEY = 'vvMirrorFailedAt'
+const RESTORE_NOTICE_KEY = 'vvRestoreNotice'
+const RESTORE_NOTICE_MS = 14 * 24 * 60 * 60 * 1000
+const SYNC_JOURNAL_ID = 'sync-merge'
 const STORE_NAMES = ['auth', 'passwords', 'wallets', 'webcreds', 'personalInfo', 'vaultMigration', 'bookmarks']
 
 let db = null
 let readyPromise = null
+let mirrorStale = false
 
 function mirrorAvailable() {
   return typeof chrome !== 'undefined' && !!chrome.storage && !!chrome.storage.local
@@ -11052,14 +11061,46 @@ function fromMirror(value) {
   return value
 }
 
-async function mirrorWrite(storeName, data) {
-  if (!mirrorAvailable() || !data || data.id === undefined) return
-  try { await chrome.storage.local.set({ [mirrorKey(storeName, data.id)]: toMirror(data) }) } catch (e) {}
+async function recordMirrorFailure() {
+  mirrorStale = true
+  try { await chrome.storage.local.set({ [MIRROR_FAILED_KEY]: Date.now() }) } catch (e) {}
 }
 
-async function mirrorRemove(storeName, id) {
+async function healMirror(database, changed) {
+  try {
+    await seedMirror(database, changed)
+    mirrorStale = false
+    return true
+  } catch (e) {
+    await recordMirrorFailure()
+    return false
+  }
+}
+
+async function mirrorWrite(database, storeName, data, changed) {
   if (!mirrorAvailable()) return
-  try { await chrome.storage.local.remove(mirrorKey(storeName, id)) } catch (e) {}
+  if (mirrorStale && await healMirror(database, changed)) return
+  const now = Date.now()
+  const entries = { [MIRROR_SAVED_KEY]: now }
+  if (data && data.id !== undefined) entries[mirrorKey(storeName, data.id)] = toMirror(data)
+  if (changed) entries[VAULT_CHANGE_STAMP] = now
+  try {
+    await chrome.storage.local.set(entries)
+  } catch (e) {
+    await recordMirrorFailure()
+    if (changed) await markVaultChanged()
+  }
+}
+
+async function mirrorRemove(database, storeName, id) {
+  if (!mirrorAvailable()) return
+  if (mirrorStale && await healMirror(database)) return
+  try {
+    await chrome.storage.local.remove(mirrorKey(storeName, id))
+    await chrome.storage.local.set({ [MIRROR_SAVED_KEY]: Date.now() })
+  } catch (e) {
+    await recordMirrorFailure()
+  }
 }
 
 async function mirrorKeysFor(names) {
@@ -11123,15 +11164,25 @@ async function restoreFromMirror(database, mirrored) {
   })
 }
 
-async function seedMirror(database) {
+async function seedMirror(database, changed) {
   const entries = {}
   for (const storeName of STORE_NAMES) {
     for (const record of await readAllRecords(database, storeName)) {
       if (record && record.id !== undefined) entries[mirrorKey(storeName, record.id)] = toMirror(record)
     }
   }
-  entries[MIRROR_READY_KEY] = Date.now()
+  const leftover = (await mirrorKeysFor(STORE_NAMES)).filter((key) => !(key in entries))
+  if (leftover.length) await chrome.storage.local.remove(leftover)
+  const now = Date.now()
+  entries[MIRROR_READY_KEY] = now
+  entries[MIRROR_SAVED_KEY] = now
+  if (changed) entries[VAULT_CHANGE_STAMP] = now
   await chrome.storage.local.set(entries)
+}
+
+function mirrorIsBehind(marks) {
+  const saved = marks[MIRROR_SAVED_KEY] || 0
+  return (marks[MIRROR_FAILED_KEY] || 0) > saved || (marks[VAULT_CHANGE_STAMP] || 0) > saved
 }
 
 async function requestPersistence() {
@@ -11147,16 +11198,17 @@ async function prepareStorage(database) {
   requestPersistence()
   try {
     const authKey = mirrorKey('auth', 'primary')
-    const marks = await chrome.storage.local.get([MIRROR_READY_KEY, authKey])
+    const marks = await chrome.storage.local.get([MIRROR_READY_KEY, MIRROR_SAVED_KEY, MIRROR_FAILED_KEY, VAULT_CHANGE_STAMP, authKey])
     const localAuth = await readRecord(database, 'auth', 'primary')
     if (!localAuth && marks[authKey]) {
       const all = await chrome.storage.local.get(null)
       const mirrored = {}
       for (const [key, value] of Object.entries(all || {})) if (key.startsWith(MIRROR_PREFIX)) mirrored[key] = value
       await restoreFromMirror(database, mirrored)
+      await chrome.storage.local.set({ [RESTORE_NOTICE_KEY]: { restoredAt: Date.now(), savedAt: marks[MIRROR_SAVED_KEY] || marks[MIRROR_READY_KEY] || null, behind: mirrorIsBehind(marks) } })
       return
     }
-    if (localAuth && (!marks[MIRROR_READY_KEY] || !marks[authKey])) await seedMirror(database)
+    if (localAuth && (!marks[MIRROR_READY_KEY] || !marks[authKey] || mirrorIsBehind(marks))) await healMirror(database)
   } catch (e) {}
 }
 
@@ -11238,8 +11290,9 @@ async function get(storeName, key) {
   })
 }
 
-async function put(storeName, data) {
-  const store = await getStore(storeName, 'readwrite')
+async function writeRecord(storeName, data, changed) {
+  const database = await openDB()
+  const store = database.transaction(storeName, 'readwrite').objectStore(storeName)
   const result = await new Promise((resolve, reject) => {
     const tx = store.transaction
     let value
@@ -11250,12 +11303,17 @@ async function put(storeName, data) {
     tx.onerror = () => reject(tx.error || request.error)
     tx.onabort = () => reject(tx.error || request.error || new Error('Save did not complete'))
   })
-  await mirrorWrite(storeName, data)
+  await mirrorWrite(database, storeName, data, changed)
   return result
 }
 
+async function put(storeName, data) {
+  return writeRecord(storeName, data, false)
+}
+
 async function remove(storeName, key) {
-  const store = await getStore(storeName, 'readwrite')
+  const database = await openDB()
+  const store = database.transaction(storeName, 'readwrite').objectStore(storeName)
   await new Promise((resolve, reject) => {
     const tx = store.transaction
     const request = store.delete(key)
@@ -11264,7 +11322,7 @@ async function remove(storeName, key) {
     tx.onerror = () => reject(tx.error || request.error)
     tx.onabort = () => reject(tx.error || request.error || new Error('Delete did not complete'))
   })
-  await mirrorRemove(storeName, key)
+  await mirrorRemove(database, storeName, key)
 }
 
 async function markVaultChanged() {
@@ -11274,9 +11332,39 @@ async function markVaultChanged() {
 }
 
 async function putVault(storeName, data) {
-  const result = await put(storeName, data)
-  await markVaultChanged()
-  return result
+  return writeRecord(storeName, data, true)
+}
+
+async function getRestoreNotice() {
+  if (!mirrorAvailable()) return null
+  try {
+    const notice = (await chrome.storage.local.get(RESTORE_NOTICE_KEY))[RESTORE_NOTICE_KEY]
+    if (!notice) return null
+    if (Date.now() - (notice.restoredAt || 0) > RESTORE_NOTICE_MS) {
+      await clearRestoreNotice()
+      return null
+    }
+    return notice
+  } catch (e) {
+    return null
+  }
+}
+
+async function clearRestoreNotice() {
+  if (!mirrorAvailable()) return
+  try { await chrome.storage.local.remove(RESTORE_NOTICE_KEY) } catch (e) {}
+}
+
+async function getSyncJournal() {
+  return get('vaultMigration', SYNC_JOURNAL_ID)
+}
+
+async function setSyncJournal(journal) {
+  return put('vaultMigration', { id: SYNC_JOURNAL_ID, ...journal })
+}
+
+async function clearSyncJournal() {
+  return remove('vaultMigration', SYNC_JOURNAL_ID)
 }
 
 async function getAuth() {
@@ -11360,7 +11448,7 @@ async function clearVaultData() {
   await clearStores(VAULT_DATA_STORES)
   await markVaultChanged()
 }
-return Object.freeze({ "openDB": openDB, "clearVaultData": clearVaultData, "get": get, "put": put, "remove": remove, "getAuth": getAuth, "setAuth": setAuth, "getPasswordVault": getPasswordVault, "setPasswordVault": setPasswordVault, "getWalletVault": getWalletVault, "setWalletVault": setWalletVault, "getWebCredsVault": getWebCredsVault, "setWebCredsVault": setWebCredsVault, "getPersonalInfo": getPersonalInfo, "setPersonalInfo": setPersonalInfo, "getVaultMigrationJournal": getVaultMigrationJournal, "setVaultMigrationJournal": setVaultMigrationJournal, "clearVaultMigrationJournal": clearVaultMigrationJournal, "getBookmarksVault": getBookmarksVault, "setBookmarksVault": setBookmarksVault, "clearAll": clearAll })
+return Object.freeze({ "openDB": openDB, "clearVaultData": clearVaultData, "get": get, "put": put, "remove": remove, "getAuth": getAuth, "setAuth": setAuth, "getPasswordVault": getPasswordVault, "setPasswordVault": setPasswordVault, "getWalletVault": getWalletVault, "setWalletVault": setWalletVault, "getWebCredsVault": getWebCredsVault, "setWebCredsVault": setWebCredsVault, "getPersonalInfo": getPersonalInfo, "setPersonalInfo": setPersonalInfo, "getVaultMigrationJournal": getVaultMigrationJournal, "setVaultMigrationJournal": setVaultMigrationJournal, "clearVaultMigrationJournal": clearVaultMigrationJournal, "getBookmarksVault": getBookmarksVault, "setBookmarksVault": setBookmarksVault, "getRestoreNotice": getRestoreNotice, "clearRestoreNotice": clearRestoreNotice, "getSyncJournal": getSyncJournal, "setSyncJournal": setSyncJournal, "clearSyncJournal": clearSyncJournal, "clearAll": clearAll })
 })()
 
 __modules["extension/auth.js"] = (function () {
@@ -15630,6 +15718,8 @@ const LOCAL_MISMATCH_MSG = 'The saved data on this device uses a different maste
 const NOT_VAULT_MSG = 'This is not a Valid Vault vault file. Nothing was changed.'
 const NEWER_VERSION_MSG = 'This vault file was made by a newer version of Valid Vault. Update this device, then import it again. Nothing was changed.'
 const DAMAGED_MSG = 'This vault file is damaged or incomplete. Nothing was changed.'
+const PARTIAL_SYNC_MSG = 'Sync stopped partway. Some sections were updated and the rest were not. Nothing was damaged. Sync the same vault again to finish.'
+const UNFINISHED_SYNC_MSG = 'The last sync on this device did not finish. Nothing was damaged. Sync the same vault again to finish it.'
 
 function isObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -15848,12 +15938,54 @@ async function planMerge(bundle, key) {
   return plan
 }
 
+function plannedSections(plan) {
+  return Object.keys(plan.sections).filter((name) => plan.sections[name])
+}
+
+async function finishSyncJournal() {
+  if (await store.getSyncJournal()) await store.clearSyncJournal()
+  await store.clearRestoreNotice()
+}
+
 async function mergeBundle(bundle, key) {
   const checked = Object.assign({}, bundle, checkSections(bundle))
   const plan = await planMerge(checked, key)
-  for (const write of plan.writes) await write()
+  if (plan.writes.length) {
+    await store.setSyncJournal({ startedAt: Date.now(), sections: plannedSections(plan) })
+    let done = 0
+    try {
+      for (const write of plan.writes) {
+        await write()
+        done++
+      }
+    } catch (e) {
+      if (done === 0) {
+        try { await store.clearSyncJournal() } catch (err) {}
+        throw e
+      }
+      throw new Error(PARTIAL_SYNC_MSG)
+    }
+  }
+  try { await finishSyncJournal() } catch (e) {}
   if (plan.writes.length) await bindSections(key)
   return { changed: plan.writes.length > 0, sections: plan.sections }
+}
+
+function formatNoticeDate(stamp) {
+  if (!stamp) return 'an earlier date'
+  return new Date(stamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+async function vaultNotices() {
+  const notices = []
+  try { if (await store.getSyncJournal()) notices.push(UNFINISHED_SYNC_MSG) } catch (e) {}
+  const restored = await store.getRestoreNotice()
+  if (restored) {
+    const when = formatNoticeDate(restored.savedAt)
+    if (restored.behind) notices.push('This browser lost its saved vault data, and Valid Vault restored it from the backup copy made ' + when + '. Changes made after that are missing on this device. Sync from another device or import your latest vault file to bring them back.')
+    else notices.push('This browser lost its saved vault data, and Valid Vault restored it from the backup copy made ' + when + '. That copy had your latest changes.')
+  }
+  return notices
 }
 
 function sealedRowIsBound(row) {
@@ -15963,7 +16095,7 @@ function describeMerge(result) {
   if (result.sections.wallets) names.push('crypto wallets')
   return 'Vault merged. Updated ' + names.join(', ') + '.'
 }
-return Object.freeze({ "SYNC_LOCK": SYNC_LOCK, "VAULT_FILE_FORMAT": VAULT_FILE_FORMAT, "VAULT_FILE_VERSION": VAULT_FILE_VERSION, "KEY_MISMATCH_MSG": KEY_MISMATCH_MSG, "LOCAL_MISMATCH_MSG": LOCAL_MISMATCH_MSG, "NOT_VAULT_MSG": NOT_VAULT_MSG, "NEWER_VERSION_MSG": NEWER_VERSION_MSG, "DAMAGED_MSG": DAMAGED_MSG, "parseBundle": parseBundle, "bundleFromPayload": bundleFromPayload, "payloadFromBundle": payloadFromBundle, "localVaultOpensWith": localVaultOpensWith, "localVaultHasLiveData": localVaultHasLiveData, "bundleOpensWith": bundleOpensWith, "buildBundle": buildBundle, "bundleHasData": bundleHasData, "mergeBundle": mergeBundle, "localVaultIsBound": localVaultIsBound, "bindLocalVault": bindLocalVault, "describeMerge": describeMerge })
+return Object.freeze({ "SYNC_LOCK": SYNC_LOCK, "VAULT_FILE_FORMAT": VAULT_FILE_FORMAT, "VAULT_FILE_VERSION": VAULT_FILE_VERSION, "KEY_MISMATCH_MSG": KEY_MISMATCH_MSG, "LOCAL_MISMATCH_MSG": LOCAL_MISMATCH_MSG, "NOT_VAULT_MSG": NOT_VAULT_MSG, "NEWER_VERSION_MSG": NEWER_VERSION_MSG, "DAMAGED_MSG": DAMAGED_MSG, "PARTIAL_SYNC_MSG": PARTIAL_SYNC_MSG, "UNFINISHED_SYNC_MSG": UNFINISHED_SYNC_MSG, "vaultNotices": vaultNotices, "parseBundle": parseBundle, "bundleFromPayload": bundleFromPayload, "payloadFromBundle": payloadFromBundle, "localVaultOpensWith": localVaultOpensWith, "localVaultHasLiveData": localVaultHasLiveData, "bundleOpensWith": bundleOpensWith, "buildBundle": buildBundle, "bundleHasData": bundleHasData, "mergeBundle": mergeBundle, "localVaultIsBound": localVaultIsBound, "bindLocalVault": bindLocalVault, "describeMerge": describeMerge })
 })()
 
 __modules["extension/generator.js"] = (function () {
@@ -18956,6 +19088,15 @@ async function requireTransferAuth(msgId) {
   return false
 }
 
+async function refreshVaultNotices() {
+  const box = document.getElementById('vault-notice')
+  if (!box) return
+  let notices = []
+  try { notices = await vaultFile.vaultNotices() } catch (e) {}
+  box.replaceChildren(...notices.map((text) => { const p = document.createElement('p'); p.textContent = text; return p }))
+  box.classList.toggle('hidden', !notices.length)
+}
+
 async function enterApp(masterKey) {
   session.setMasterKey(masterKey)
   let migrationError = null
@@ -18971,6 +19112,7 @@ async function enterApp(masterKey) {
     state.pendingLaunch = null
     showTab(state.tab)
   }
+  refreshVaultNotices()
   if (migrationError) showMsg('msg-manage', 'Your saved logins could not be upgraded: ' + errText(migrationError) + '. Nothing was lost; the old copy was kept.', 'error')
   if (state.pendingShare) saveSharedLink()
 }
@@ -20294,12 +20436,14 @@ async function handleImported(payloadText) {
       const result = await vaultFile.mergeBundle(bundle, key())
       showMsg('msg-sync', vaultFile.describeMerge(result), 'success')
       if (result.changed) refreshAfterSync()
+      refreshVaultNotices()
       return
     }
     showMsg('msg-sync', 'Unrecognized code', 'error')
   } catch (e) {
     showMsg('msg-sync', 'Sync failed: ' + errText(e), 'error')
   }
+  refreshVaultNotices()
 }
 
 async function setupKeyPackage(mk, isChange) {
@@ -20546,6 +20690,7 @@ async function importVaultFile(skipAuth) {
   } catch (e) {
     showMsg('msg-sync', 'Import failed: ' + errText(e), 'error')
   }
+  refreshVaultNotices()
 }
 
 async function importPasswordsFile() {

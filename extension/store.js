@@ -4,10 +4,16 @@ const VAULT_CHANGE_STAMP = 'vaultChangedAt'
 const MIRROR_PREFIX = 'vvMirror:'
 const MIRROR_READY_KEY = 'vvMirrorReady'
 const MIRROR_BYTES_TAG = '$vvBytes'
+const MIRROR_SAVED_KEY = 'vvMirrorSavedAt'
+const MIRROR_FAILED_KEY = 'vvMirrorFailedAt'
+const RESTORE_NOTICE_KEY = 'vvRestoreNotice'
+const RESTORE_NOTICE_MS = 14 * 24 * 60 * 60 * 1000
+const SYNC_JOURNAL_ID = 'sync-merge'
 const STORE_NAMES = ['auth', 'passwords', 'wallets', 'webcreds', 'personalInfo', 'vaultMigration', 'bookmarks']
 
 let db = null
 let readyPromise = null
+let mirrorStale = false
 
 function mirrorAvailable() {
   return typeof chrome !== 'undefined' && !!chrome.storage && !!chrome.storage.local
@@ -58,14 +64,46 @@ function fromMirror(value) {
   return value
 }
 
-async function mirrorWrite(storeName, data) {
-  if (!mirrorAvailable() || !data || data.id === undefined) return
-  try { await chrome.storage.local.set({ [mirrorKey(storeName, data.id)]: toMirror(data) }) } catch (e) {}
+async function recordMirrorFailure() {
+  mirrorStale = true
+  try { await chrome.storage.local.set({ [MIRROR_FAILED_KEY]: Date.now() }) } catch (e) {}
 }
 
-async function mirrorRemove(storeName, id) {
+async function healMirror(database, changed) {
+  try {
+    await seedMirror(database, changed)
+    mirrorStale = false
+    return true
+  } catch (e) {
+    await recordMirrorFailure()
+    return false
+  }
+}
+
+async function mirrorWrite(database, storeName, data, changed) {
   if (!mirrorAvailable()) return
-  try { await chrome.storage.local.remove(mirrorKey(storeName, id)) } catch (e) {}
+  if (mirrorStale && await healMirror(database, changed)) return
+  const now = Date.now()
+  const entries = { [MIRROR_SAVED_KEY]: now }
+  if (data && data.id !== undefined) entries[mirrorKey(storeName, data.id)] = toMirror(data)
+  if (changed) entries[VAULT_CHANGE_STAMP] = now
+  try {
+    await chrome.storage.local.set(entries)
+  } catch (e) {
+    await recordMirrorFailure()
+    if (changed) await markVaultChanged()
+  }
+}
+
+async function mirrorRemove(database, storeName, id) {
+  if (!mirrorAvailable()) return
+  if (mirrorStale && await healMirror(database)) return
+  try {
+    await chrome.storage.local.remove(mirrorKey(storeName, id))
+    await chrome.storage.local.set({ [MIRROR_SAVED_KEY]: Date.now() })
+  } catch (e) {
+    await recordMirrorFailure()
+  }
 }
 
 async function mirrorKeysFor(names) {
@@ -129,15 +167,25 @@ async function restoreFromMirror(database, mirrored) {
   })
 }
 
-async function seedMirror(database) {
+async function seedMirror(database, changed) {
   const entries = {}
   for (const storeName of STORE_NAMES) {
     for (const record of await readAllRecords(database, storeName)) {
       if (record && record.id !== undefined) entries[mirrorKey(storeName, record.id)] = toMirror(record)
     }
   }
-  entries[MIRROR_READY_KEY] = Date.now()
+  const leftover = (await mirrorKeysFor(STORE_NAMES)).filter((key) => !(key in entries))
+  if (leftover.length) await chrome.storage.local.remove(leftover)
+  const now = Date.now()
+  entries[MIRROR_READY_KEY] = now
+  entries[MIRROR_SAVED_KEY] = now
+  if (changed) entries[VAULT_CHANGE_STAMP] = now
   await chrome.storage.local.set(entries)
+}
+
+function mirrorIsBehind(marks) {
+  const saved = marks[MIRROR_SAVED_KEY] || 0
+  return (marks[MIRROR_FAILED_KEY] || 0) > saved || (marks[VAULT_CHANGE_STAMP] || 0) > saved
 }
 
 async function requestPersistence() {
@@ -153,16 +201,17 @@ async function prepareStorage(database) {
   requestPersistence()
   try {
     const authKey = mirrorKey('auth', 'primary')
-    const marks = await chrome.storage.local.get([MIRROR_READY_KEY, authKey])
+    const marks = await chrome.storage.local.get([MIRROR_READY_KEY, MIRROR_SAVED_KEY, MIRROR_FAILED_KEY, VAULT_CHANGE_STAMP, authKey])
     const localAuth = await readRecord(database, 'auth', 'primary')
     if (!localAuth && marks[authKey]) {
       const all = await chrome.storage.local.get(null)
       const mirrored = {}
       for (const [key, value] of Object.entries(all || {})) if (key.startsWith(MIRROR_PREFIX)) mirrored[key] = value
       await restoreFromMirror(database, mirrored)
+      await chrome.storage.local.set({ [RESTORE_NOTICE_KEY]: { restoredAt: Date.now(), savedAt: marks[MIRROR_SAVED_KEY] || marks[MIRROR_READY_KEY] || null, behind: mirrorIsBehind(marks) } })
       return
     }
-    if (localAuth && (!marks[MIRROR_READY_KEY] || !marks[authKey])) await seedMirror(database)
+    if (localAuth && (!marks[MIRROR_READY_KEY] || !marks[authKey] || mirrorIsBehind(marks))) await healMirror(database)
   } catch (e) {}
 }
 
@@ -244,8 +293,9 @@ async function get(storeName, key) {
   })
 }
 
-async function put(storeName, data) {
-  const store = await getStore(storeName, 'readwrite')
+async function writeRecord(storeName, data, changed) {
+  const database = await openDB()
+  const store = database.transaction(storeName, 'readwrite').objectStore(storeName)
   const result = await new Promise((resolve, reject) => {
     const tx = store.transaction
     let value
@@ -256,12 +306,17 @@ async function put(storeName, data) {
     tx.onerror = () => reject(tx.error || request.error)
     tx.onabort = () => reject(tx.error || request.error || new Error('Save did not complete'))
   })
-  await mirrorWrite(storeName, data)
+  await mirrorWrite(database, storeName, data, changed)
   return result
 }
 
+async function put(storeName, data) {
+  return writeRecord(storeName, data, false)
+}
+
 async function remove(storeName, key) {
-  const store = await getStore(storeName, 'readwrite')
+  const database = await openDB()
+  const store = database.transaction(storeName, 'readwrite').objectStore(storeName)
   await new Promise((resolve, reject) => {
     const tx = store.transaction
     const request = store.delete(key)
@@ -270,7 +325,7 @@ async function remove(storeName, key) {
     tx.onerror = () => reject(tx.error || request.error)
     tx.onabort = () => reject(tx.error || request.error || new Error('Delete did not complete'))
   })
-  await mirrorRemove(storeName, key)
+  await mirrorRemove(database, storeName, key)
 }
 
 async function markVaultChanged() {
@@ -280,9 +335,39 @@ async function markVaultChanged() {
 }
 
 async function putVault(storeName, data) {
-  const result = await put(storeName, data)
-  await markVaultChanged()
-  return result
+  return writeRecord(storeName, data, true)
+}
+
+async function getRestoreNotice() {
+  if (!mirrorAvailable()) return null
+  try {
+    const notice = (await chrome.storage.local.get(RESTORE_NOTICE_KEY))[RESTORE_NOTICE_KEY]
+    if (!notice) return null
+    if (Date.now() - (notice.restoredAt || 0) > RESTORE_NOTICE_MS) {
+      await clearRestoreNotice()
+      return null
+    }
+    return notice
+  } catch (e) {
+    return null
+  }
+}
+
+async function clearRestoreNotice() {
+  if (!mirrorAvailable()) return
+  try { await chrome.storage.local.remove(RESTORE_NOTICE_KEY) } catch (e) {}
+}
+
+async function getSyncJournal() {
+  return get('vaultMigration', SYNC_JOURNAL_ID)
+}
+
+async function setSyncJournal(journal) {
+  return put('vaultMigration', { id: SYNC_JOURNAL_ID, ...journal })
+}
+
+async function clearSyncJournal() {
+  return remove('vaultMigration', SYNC_JOURNAL_ID)
 }
 
 async function getAuth() {
@@ -388,5 +473,10 @@ export {
   clearVaultMigrationJournal,
   getBookmarksVault,
   setBookmarksVault,
+  getRestoreNotice,
+  clearRestoreNotice,
+  getSyncJournal,
+  setSyncJournal,
+  clearSyncJournal,
   clearAll
 }

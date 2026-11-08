@@ -308,6 +308,15 @@ async function requireTransferAuth(msgId) {
   return false
 }
 
+async function refreshVaultNotices() {
+  const box = document.getElementById('vault-notice')
+  if (!box) return
+  let notices = []
+  try { notices = await vaultFile.vaultNotices() } catch (e) {}
+  box.replaceChildren(...notices.map((text) => { const p = document.createElement('p'); p.textContent = text; return p }))
+  box.classList.toggle('hidden', !notices.length)
+}
+
 async function enterApp(masterKey) {
   session.setMasterKey(masterKey)
   let migrationError = null
@@ -323,6 +332,7 @@ async function enterApp(masterKey) {
     state.pendingLaunch = null
     showTab(state.tab)
   }
+  refreshVaultNotices()
   if (migrationError) showMsg('msg-manage', 'Your saved logins could not be upgraded: ' + errText(migrationError) + '. Nothing was lost; the old copy was kept.', 'error')
   if (state.pendingShare) saveSharedLink()
 }
@@ -1646,12 +1656,14 @@ async function handleImported(payloadText) {
       const result = await vaultFile.mergeBundle(bundle, key())
       showMsg('msg-sync', vaultFile.describeMerge(result), 'success')
       if (result.changed) refreshAfterSync()
+      refreshVaultNotices()
       return
     }
     showMsg('msg-sync', 'Unrecognized code', 'error')
   } catch (e) {
     showMsg('msg-sync', 'Sync failed: ' + errText(e), 'error')
   }
+  refreshVaultNotices()
 }
 
 async function setupKeyPackage(mk, isChange) {
@@ -1898,6 +1910,7 @@ async function importVaultFile(skipAuth) {
   } catch (e) {
     showMsg('msg-sync', 'Import failed: ' + errText(e), 'error')
   }
+  refreshVaultNotices()
 }
 
 async function importPasswordsFile() {

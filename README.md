@@ -15,7 +15,7 @@ A local, encrypted, QR code portable password manager that works without a cloud
 
 **Microsoft Edge:** fully compatible, installed from the Chrome Web Store. Valid Vault is deliberately not on Microsoft's Edge Add-ons store. See [Using Valid Vault on Microsoft Edge](#using-valid-vault-on-microsoft-edge) for the two-minute install and the reason why.
 
-**Community:** updates, support, and bug reports on the [Valid Vault Discord](https://discord.gg/XSgqs4uuBa).
+**Community:** updates, support, and bug reports on the [Valid Vault Discord](https://discord.gg/2SP383cJs9).
 
 ---
 
@@ -30,6 +30,10 @@ A local, encrypted, QR code portable password manager that works without a cloud
 > ✅ **Signup Forms Fixed - v0.9.4.5**
 >
 > Opening a dropdown on a signup form, like a birthday picker, no longer brings up the save prompt as if the form had been sent, so signups such as Discord's can be finished. The save prompt now asks only when a form is really submitted, and it closes when you click outside it or press Escape, the same as Not now. See [CHANGELOG.md](CHANGELOG.md) for full details.
+
+> ✅ **Safer Sync and Restore - v0.9.4.6**
+>
+> A sync that stops partway, such as when storage fails between sections, now says so, and Manage, the popup, and the phone app show that it did not finish until you sync the same vault again. The extension's backup copy repairs itself after a failed save, and if the browser ever loses its vault data, Valid Vault tells you it restored from the backup copy, when that copy was made, and whether anything newer is missing. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ---
 
@@ -195,7 +199,8 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * Uni-Vault - link every browser on one computer to a single encrypted vault file; saves reach the file within about a second and other linked browsers pick them up within about 30 seconds, or within seconds while Manage is open, merged by timestamp with tombstoned deletes
 * Uni-Vault refuses a damaged file, a replaced file, or a file made with a different key and never overwrites it; each browser keeps its own working copy, and Sync shows the linked file and last sync time with Reconnect and Unlink
 * Uni-Vault works in Chrome and Edge out of the box; Brave needs its File System Access API setting switched on, explained in the User Guide, and Export and Import work in Brave as before
-* The extension keeps an encrypted backup copy of the vault in its own storage; if the browser clears site data, the vault is restored at the next start and a linked Uni-Vault file is reconnected after you unlock
+* The extension keeps an encrypted backup copy of the vault in its own storage; if the browser clears site data, the vault is restored at the next start, Manage and the popup say when the copy was made and whether anything newer is missing, and a linked Uni-Vault file is reconnected after you unlock. A failed save to the backup copy is repaired on the next save or the next start
+* A sync that stops partway is recorded, reported, and finished by syncing the same vault again
 * Renaming the key and vault offers a key file and a vault file under the new name right away, on the extension and the phone
 * Live QR sync - stream your vault or your protected key as a one-way fountain QR, scan it on the other device; frames carry raw bytes, change every 0.2 seconds, and any frame the camera catches helps, in any order
 * Sovereign scanner - the standard web camera plus a vendored jsQR decoder, without Google libraries; it reads on several processor cores at once, checks the whole camera image as well as the scan box, and shows pieces received, frames caught, and reads per second while it works
@@ -233,9 +238,9 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * Single-file web bundle - build.js bundles the phone app from the extension's own modules into one self-contained HTML file, so both clients share one copy of the core code
 * Android via Capacitor, with native plugins for biometric auth, file saving, autofill, sharing, and the private browser
 * Every library is vendored into the bundle, and the scan path runs without Google SDKs
-* 184 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
+* 190 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
 
-## Current Status: v0.9.4.5 - Final Bug Fixes and Polish
+## Current Status: v0.9.4.6 - Final Bug Fixes and Polish
 
 **Completed:**
 
@@ -291,13 +296,14 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * ✅ New look on the phone: day and night modes, the striped V, raised and recessed design, redrawn start page backgrounds, and day and night widgets
 * ✅ Encrypted backup copy in the extension that restores the vault after the browser clears site data
 * ✅ New look in the extension: day and night modes, the striped V, and the raised and recessed design across the popup, Manage, the bookmarks panel, the User Guide, and the V tags on websites
-* ✅ 184 automated tests for the extension and the phone app, public in the repository and run with `npm test`
+* ✅ 190 automated tests for the extension and the phone app, public in the repository and run with `npm test`
 * ✅ Deletes win same-moment conflicts on every synced section, trusted browsers checked by signing certificate, and extra fields chosen one by one in the save prompt
 * ✅ Crypto wallets travel in the vault QR with the rest of the vault
 * ✅ 2FA codes on logins: typed setup key or scanned QR, live codes in Manage and the phone app, a V tag on code boxes, Android Autofill for code boxes, and imports from Bitwarden, 1Password, and CSV
 * ✅ Ranked phone numbers and addresses, Personal Info merged entry by entry, every encrypted record tied to its place in the vault, and sync tested against clock drift, offline edits, old backups, and mixed versions
 * ✅ Open fill lists cleared on lock, Clear Vault that never leaves a recoverable copy behind, an ask before the extension fills a page without https, screenshots and recent apps previews blocked on the phone, a lock when you leave the phone app, and a threat model
 * ✅ Tests run on every push on GitHub Actions, fuzz tests for the vault, key, and QR parsers, SECURITY.md, and a self-custody guide
+* ✅ A sync that stops partway is reported and finished by the next sync, and a backup copy that repairs itself and says when it was used
 
 **Before 1.0:**
 
@@ -491,7 +497,7 @@ Some are rare:
 * Open water can bring jellyfish, dolphins, a manta ray, a shark, or, about 1 in 33, a whale
 * About 1 in 8 dandelion skies has a sun, and the city sometimes has hover cars or a pixel moon
 
-Like one? Tap Save it to Downloads under the start page tiles. The file is named with its style and seed, like valid-vault-underwater-1a2b3c4d.png. Styles that come in both modes have a night version named with night in front, like nightfractal, so every name points to exactly one style. Each file name ends in its seed, the 8 or so characters after the style, and a future update will let you share a background and draw it from that seed alone. Collecting them is encouraged, so share your collections and your rarest finds on the [Valid Vault Discord](https://discord.gg/XSgqs4uuBa). They also make great, unique backgrounds for your phone.
+Like one? Tap Save it to Downloads under the start page tiles. The file is named with its style and seed, like valid-vault-underwater-1a2b3c4d.png. Styles that come in both modes have a night version named with night in front, like nightfractal, so every name points to exactly one style. Each file name ends in its seed, the 8 or so characters after the style, and a future update will let you share a background and draw it from that seed alone. Collecting them is encouraged, so share your collections and your rarest finds on the [Valid Vault Discord](https://discord.gg/2SP383cJs9). They also make great, unique backgrounds for your phone.
 
 **What a saved background carries:** only the picture. The file holds the image size and the pixels, without EXIF data, a date, device or app details, a location, or text fields. To keep a design private, remove the seed from the file name before you share it. The image is drawn at your screen's size, which is the one hint about what kind of phone made it. Android notes the save in your phone's own Downloads list, and that record stays on the phone.
 
@@ -526,7 +532,7 @@ Contact byrook@proton.me with the subject "Valid Vault for organizations."
 
 ## Community
 
-Join the [Valid Vault Discord](https://discord.gg/XSgqs4uuBa) for release announcements, support, and bug reports.
+Join the [Valid Vault Discord](https://discord.gg/2SP383cJs9) for release announcements, support, and bug reports.
 
 ## Related Projects
 
@@ -550,7 +556,7 @@ Contributions welcome. This project maintains a compact, readable codebase with 
 * Run `npm test` before opening a pull request, and add tests for new behavior in the matching file in `tests/`
 
 **Join the Discord** Join the Discord for release announcements, setup help, and a direct line to report bugs or request features.
-https://discord.gg/XSgqs4uuBa
+https://discord.gg/2SP383cJs9
 
 ## Security
 

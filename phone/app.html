@@ -75,6 +75,8 @@
     .hidden { display: none !important; }
     .msg { padding: 12px; margin: 12px 0; border-radius: 8px; font-size: 13px; line-height: 1.45; word-break: break-word; color: var(--text); }
     .msg.error { color: var(--danger); }
+    #vault-notice p { margin: 0; }
+    #vault-notice p + p { margin-top: 8px; }
     .enroll-row { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
     .enroll-row .label { flex: 1; color: var(--text); font-size: 14px; }
     .enroll-row .state { color: var(--green); font-size: 12px; }
@@ -358,6 +360,7 @@
 
       <div id="tab-manage" class="panel active">
         <h1>Manage Vault</h1>
+        <div id="vault-notice" class="msg error hidden" role="status"></div>
         <h2>Unlock Methods</h2>
         <p class="note">Keep at least one way to unlock: fingerprint or device PIN, or a master password. Having both is best, so one can stand in if the other stops working.</p>
         <div class="auth-methods">
@@ -666,7 +669,7 @@
         <p class="lead">Take back your data with the Valid ecosystem. Privacy should not come at a premium. Join the Discord to connect with other privacy-minded people.</p>
         <p class="lead">Regards,<br>Michael</p>
         <div class="about-links">
-          <button class="secondary block" data-link="https://discord.gg/XSgqs4uuBa">Discord</button>
+          <button class="secondary block" data-link="https://discord.gg/2SP383cJs9">Discord</button>
           <button class="secondary block" data-link="https://github.com/validprivacy/valid-vault">GitHub Repository</button>
           <button class="secondary block" data-link="https://validprivacy.github.io/vault.html">Website</button>
         </div>
