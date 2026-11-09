@@ -69,6 +69,13 @@ Copyright JetBrains s.r.o. and Kotlin Programming Language contributors
 Source: https://github.com/JetBrains/kotlin and https://github.com/Kotlin/kotlinx.coroutines
 License: Apache License, Version 2.0, reproduced in full in section A below.
 
+10. Ionic Filesystem library for Android 1.0.0
+Used by the Capacitor Filesystem plugin to save files.
+Package: io.ionic.libs:ionfilesystem-android, built into the Android app
+Copyright (c) 2025 Ionic
+Source: https://github.com/ionic-team/ion-android-filesystem
+License: MIT License, reproduced in full in section B below.
+
 --------------------------------------------------------------------------------
 A. Apache License, Version 2.0 (jsQR, Apache Cordova, AndroidX, Kotlin)
 --------------------------------------------------------------------------------
@@ -277,7 +284,7 @@ A. Apache License, Version 2.0 (jsQR, Apache Cordova, AndroidX, Kotlin)
 
 
 --------------------------------------------------------------------------------
-B. MIT License (QR code generator, Phosphor Icons, and Capacitor)
+B. MIT License (QR code generator, Phosphor Icons, Capacitor, and the Ionic Filesystem library)
 --------------------------------------------------------------------------------
 
 Copyright (c) 2009 Kazuhiko Arase
