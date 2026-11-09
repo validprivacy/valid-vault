@@ -96,6 +96,10 @@ final class BrowserScripts {
         return "paintStart(" + seed + ",'" + (day ? "day" : "night") + "')";
     }
 
+    static String repaint(int seed, boolean day) {
+        return "paintStart(" + seed + ",'" + (day ? "day" : "night") + "',true)";
+    }
+
     static String exportStart(int id) {
         return "exportStart(" + id + ")";
     }

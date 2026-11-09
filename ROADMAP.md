@@ -1,10 +1,18 @@
 # Valid Vault - Development Roadmap
 
-**Current Version:** v0.9.4.6 - **Status: Late Beta**
+**Current Version:** v0.9.4.7 - **Status: Late Beta**
 
 ---
 
 ## Version History (Completed)
+
+### v0.9.4.7 - Start Page Backgrounds (Nov 2026)
+
+* ✅ Returning to a tab's start page redraws its background instead of leaving it blank
+* ✅ A background painter that stops answering is replaced, and the page draws the background itself
+* ✅ 27 unit tests for the Android app's native code, run on every push
+* ✅ Third-party notices list everything bundled in the Android app
+* ✅ 193 automated tests
 
 ### v0.9.4.6 - Safer Sync and Restore (Nov 2026)
 

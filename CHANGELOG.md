@@ -5,11 +5,22 @@ All notable changes to Valid Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.4.7] - 2026-11-09
+
+Start page backgrounds come back when you return to a tab's start page, and the Android app's native code now has its own tests.
+
+### Fixed
+
+* **Blank start page after going back.** Opening a site from a new tab and then going back to that tab's start page left the background blank. The start page skipped redrawing a background it had already drawn, but Android can clear the drawing while the start page is hidden. Returning to a start page now always redraws its background, and if the background painter ever stops answering, the page draws the background itself instead, so it is never left blank.
 
 ### Added
 
 * **Android native code tests.** 24 unit tests check the Java code in the Android app that decides which page a login may be filled into, which requests the private browser blocks, how links are cleaned before they open, and which addresses can be pinned. They cover addresses built to hide their real host, such as `https://bank.com@evil.com`, and links that try to open `javascript:` or `intent:` addresses. Each test was checked by breaking the code it covers and confirming the test fails. They run on every push alongside the other tests.
+* **Start page tests.** Three tests run the real start page in Chromium: the background paints, returning to a start page paints it again, and a painter that stops answering is replaced. Three more Android unit tests check the commands that ask for a background. 193 tests in total, plus 27 Android unit tests.
+
+### Changed
+
+* **Third-party notices** now list everything bundled in the Android app: Capacitor and its Filesystem and Share plugins, the Ionic Filesystem library, the Apache Cordova Android framework, the AndroidX libraries, and the Kotlin standard library and kotlinx.coroutines.
 
 ### Removed
 

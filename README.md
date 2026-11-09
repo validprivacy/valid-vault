@@ -35,6 +35,10 @@ A local, encrypted, QR code portable password manager that works without a cloud
 >
 > A sync that stops partway, such as when storage fails between sections, now says so, and Manage, the popup, and the phone app show that it did not finish until you sync the same vault again. The extension's backup copy repairs itself after a failed save, and if the browser ever loses its vault data, Valid Vault tells you it restored from the backup copy, when that copy was made, and whether anything newer is missing. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
+> ✅ **Start Page Backgrounds - v0.9.4.7**
+>
+> Going back to a tab's start page after opening a site no longer leaves the background blank. The background is redrawn every time the start page comes back, and if the painter ever stops answering, the page draws it itself. The Android app's native code also has its own unit tests now, run on every push. See [CHANGELOG.md](CHANGELOG.md) for full details.
+
 ---
 
 ## What is Valid Vault?
@@ -238,10 +242,10 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * Single-file web bundle - build.js bundles the phone app from the extension's own modules into one self-contained HTML file, so both clients share one copy of the core code
 * Android via Capacitor, with native plugins for biometric auth, file saving, autofill, sharing, and the private browser
 * Every library is vendored into the bundle, and the scan path runs without Google SDKs
-* 190 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
-* 24 unit tests in `android/app/src/test` check the Android app's native code that decides which page a login may be filled into, which requests the private browser blocks, and how links are cleaned, run with `gradlew testDebugUnitTest` and on every push
+* 193 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
+* 27 unit tests in `android/app/src/test` check the Android app's native code that decides which page a login may be filled into, which requests the private browser blocks, how links are cleaned, and how the start page asks for its background, run with `gradlew testDebugUnitTest` and on every push
 
-## Current Status: v0.9.4.6 - Final Bug Fixes and Polish
+## Current Status: v0.9.4.7 - Final Bug Fixes and Polish
 
 **Completed:**
 
@@ -297,7 +301,7 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * ✅ New look on the phone: day and night modes, the striped V, raised and recessed design, redrawn start page backgrounds, and day and night widgets
 * ✅ Encrypted backup copy in the extension that restores the vault after the browser clears site data
 * ✅ New look in the extension: day and night modes, the striped V, and the raised and recessed design across the popup, Manage, the bookmarks panel, the User Guide, and the V tags on websites
-* ✅ 190 automated tests for the extension and the phone app, public in the repository and run with `npm test`
+* ✅ 193 automated tests for the extension and the phone app, public in the repository and run with `npm test`
 * ✅ Deletes win same-moment conflicts on every synced section, trusted browsers checked by signing certificate, and extra fields chosen one by one in the save prompt
 * ✅ Crypto wallets travel in the vault QR with the rest of the vault
 * ✅ 2FA codes on logins: typed setup key or scanned QR, live codes in Manage and the phone app, a V tag on code boxes, Android Autofill for code boxes, and imports from Bitwarden, 1Password, and CSV
@@ -472,7 +476,7 @@ A native autofill service reads which fields a form has, and the contents of onl
 **Private Browser:**
 The browser is its own Android activity running in a separate process, with the WebView's data directory split off from the vault's. Every page request is checked against Valid Vault's own tracker list and against domains taken from EasyPrivacy and EasyList, which ship as a separate data file under their own license; list domains are blocked only when the page belongs to a different site. Blocked requests get an empty response, and the elements that requested them are hidden along with standard ad slots. Main-frame navigations are cleaned of tracking tags and unwrapped from known redirect links before loading. A script at the start of every frame sets Global Privacy Control, and pages opened from the address bar also carry the Sec-GPC header. Closing the browser deletes its cookies, storage, cache, and history, and opening it clears anything left from a session Android ended early before the first page loads. Browser files are left out of Android backups.
 
-Each tab has its own page view, created when it first loads a page, and tabs you aren't looking at are hidden and paused. The start page background is drawn in a separate page view that has no network access, in a background worker so open tabs don't stall while it paints. Pinned sites are kept in the browser's own settings file, and nothing is added there while Tor mode is on.
+Each tab has its own page view, created when it first loads a page, and tabs you aren't looking at are hidden and paused. The start page background is drawn in a separate page view that has no network access, in a background worker so open tabs don't stall while it paints. It is redrawn each time a start page is shown, and if the worker stops answering, the page paints the background itself. Pinned sites are kept in the browser's own settings file, and nothing is added there while Tor mode is on.
 
 Autofill in the browser goes through the same Valid Vault screen as Android Autofill, opened in the vault's own process. In normal mode a script at the start of each page draws the V tags and reports a tap or a submitted login over a message channel that only accepts the top frame of the tab's current site, and a V only counts right after a real touch on the page. After unlock, Valid Vault returns exactly one username and password to the browser, which checks that the tab is still on the same scheme, address, and port before filling. The fill script checks the page's origin again before reading anything. Saving runs the other way: the browser asks first, then hands the typed login to Valid Vault to unlock and save. Personal Info works the same way: the page lists which Personal Info fields its form has, Valid Vault shows those with only the tapped one checked, and the values you choose come back through the same channel, only to the page that asked, after its origin is checked again. The password generator runs in the page itself with the browser's random source and your length settings, so no vault access is needed until you save. Once a fill or generator request is cancelled, further taps from that site are ignored for a few seconds. In Tor mode the page script and message channel are never added, so filling only starts from the menu.
 

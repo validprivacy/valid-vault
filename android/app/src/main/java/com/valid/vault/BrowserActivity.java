@@ -1359,12 +1359,16 @@ public class BrowserActivity extends Activity {
     }
 
     private void paintArt(int seed) {
+        paintArt(seed, false);
+    }
+
+    private void paintArt(int seed, boolean force) {
         if (art == null) return;
         if (!artReady) {
             artPending = seed;
             return;
         }
-        art.evaluateJavascript(BrowserScripts.paint(seed, dayMode), null);
+        art.evaluateJavascript(force ? BrowserScripts.repaint(seed, dayMode) : BrowserScripts.paint(seed, dayMode), null);
     }
 
     private FrameLayout buildPull() {
@@ -1531,7 +1535,7 @@ public class BrowserActivity extends Activity {
         renderPins();
         updateStartInfo();
         startView.setVisibility(View.VISIBLE);
-        paintArt(tab.seed);
+        paintArt(tab.seed, true);
         showAddressOf(tab);
         showBars();
         updateBar();

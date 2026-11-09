@@ -34,7 +34,7 @@ The full detail is in [README.md](README.md), the plan in [ROADMAP.md](ROADMAP.m
 
 * A Manifest V3 extension for Chromium browsers, and an Android app through Capacitor with native plugins for fingerprint unlock, autofill, file saving, and a private browser
 * One shared codebase, bundled by build.js into a single self-contained file for the phone, with every library vendored and no network requests from the vault
-* 190 automated tests, run with `npm test`, and 24 unit tests for the Android app's native code
+* 193 automated tests, run with `npm test`, and 27 unit tests for the Android app's native code
 
 ## Build and test
 

@@ -14,6 +14,10 @@ let lastStyle = ''
 let paintedKey = null
 let exportResult = null
 const BASE64_CHUNK = 32768
+const WORKER_TIMEOUT_MS = 8000
+let paintCount = 0
+let pendingToken = null
+let watchdog = 0
 
 function freshStage() {
   const replacement = document.createElement('canvas')
@@ -25,6 +29,8 @@ function freshStage() {
 function dropWorker() {
   if (worker) worker.terminate()
   worker = null
+  clearTimeout(watchdog)
+  pendingToken = null
   freshStage()
   requestedKey = null
   if (currentSeed !== null) paintStart(currentSeed, currentMode)
@@ -59,15 +65,19 @@ function stageSize() {
   return [Math.max(1, Math.round(window.innerWidth * scale)), Math.max(1, Math.round(window.innerHeight * scale))]
 }
 
-function paintStart(seed, mode) {
+function paintStart(seed, mode, force) {
   currentSeed = seed
   currentMode = mode === 'day' ? 'day' : 'night'
   const [w, h] = stageSize()
   const key = seed + ':' + currentMode + ':' + w + 'x' + h
-  if (key === requestedKey) return 'same'
+  if (key === requestedKey && !force) return 'same'
   requestedKey = key
   if (worker) {
-    worker.postMessage({ seed, w, h, key, mode: currentMode })
+    const token = key + '#' + (++paintCount)
+    pendingToken = token
+    worker.postMessage({ seed, w, h, key: token, mode: currentMode })
+    clearTimeout(watchdog)
+    watchdog = setTimeout(() => { if (worker && pendingToken === token && paintedKey !== token) dropWorker() }, WORKER_TIMEOUT_MS)
     return 'worker'
   }
   lastStyle = paintStage(stage, seed, w, h, currentMode)
