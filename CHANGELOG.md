@@ -5,6 +5,16 @@ All notable changes to Valid Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+* **Android native code tests.** 24 unit tests check the Java code in the Android app that decides which page a login may be filled into, which requests the private browser blocks, how links are cleaned before they open, and which addresses can be pinned. They cover addresses built to hide their real host, such as `https://bank.com@evil.com`, and links that try to open `javascript:` or `intent:` addresses. Each test was checked by breaking the code it covers and confirming the test fails. They run on every push alongside the other tests.
+
+### Removed
+
+* **Placeholder Android tests.** The two example tests that came with the Android project template checked nothing in Valid Vault, and one expected the template's package name, so it would have failed on a device.
+
 ## [0.9.4.6] - 2026-11-08
 
 A sync that stops partway now says so and finishes on the next try, and the extension's backup copy repairs itself and tells you when it was used.

@@ -36,8 +36,41 @@ File: android/app/src/main/assets/browser/easylist-domains.txt
 Snapshot taken on 2026-10-16. It ships inside the signed Android app and is never downloaded at runtime.
 License, source, and changes: android/app/src/main/assets/browser/EASYLIST-NOTICE.txt
 
+6. Capacitor 7.6.10, with the Capacitor Filesystem 7.1.8 and Share 7.0.4 plugins
+Runs the phone app's interface inside Android and connects it to the app's native code, file saving, and the share sheet.
+Packages: @capacitor/android, @capacitor/filesystem, @capacitor/share, built into the Android app
+Copyright (c) 2017-present Drifty Co.
+Copyright (c) 2025 Ionic (Filesystem)
+Copyright 2020-present Ionic, https://ionic.io (Share)
+Source: https://github.com/ionic-team/capacitor and https://github.com/ionic-team/capacitor-plugins
+License: MIT License, reproduced in full in section B below.
+
+7. Apache Cordova Android framework 10.1.1
+Included by Capacitor for plugin compatibility. Some Capacitor source files are adapted from Apache Cordova.
+Copyright The Apache Software Foundation
+Source: https://github.com/apache/cordova-android
+License: Apache License, Version 2.0, reproduced in full in section A below.
+NOTICE:
+Apache Cordova
+Copyright 2012 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+8. AndroidX libraries
+Android support code used by the phone app and by Capacitor, including appcompat, activity, fragment, core, core-splashscreen, coordinatorlayout, biometric, and webkit, along with the AndroidX libraries they depend on.
+Copyright The Android Open Source Project
+Source: https://android.googlesource.com/platform/frameworks/support
+License: Apache License, Version 2.0, reproduced in full in section A below.
+
+9. Kotlin standard library and kotlinx.coroutines
+Used by AndroidX and by the Capacitor Filesystem plugin.
+Copyright JetBrains s.r.o. and Kotlin Programming Language contributors
+Source: https://github.com/JetBrains/kotlin and https://github.com/Kotlin/kotlinx.coroutines
+License: Apache License, Version 2.0, reproduced in full in section A below.
+
 --------------------------------------------------------------------------------
-A. Apache License, Version 2.0 (jsQR)
+A. Apache License, Version 2.0 (jsQR, Apache Cordova, AndroidX, Kotlin)
 --------------------------------------------------------------------------------
 
                                  Apache License
@@ -244,13 +277,16 @@ A. Apache License, Version 2.0 (jsQR)
 
 
 --------------------------------------------------------------------------------
-B. MIT License (QR code generator and Phosphor Icons)
+B. MIT License (QR code generator, Phosphor Icons, and Capacitor)
 --------------------------------------------------------------------------------
 
 Copyright (c) 2009 Kazuhiko Arase
 Copyright (c) 2012 davidshimjs
 Copyright (c) 2016 papnkukn
 Copyright (c) 2023 Phosphor Icons
+Copyright (c) 2017-present Drifty Co.
+Copyright (c) 2025 Ionic
+Copyright 2020-present Ionic
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -239,6 +239,7 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * Android via Capacitor, with native plugins for biometric auth, file saving, autofill, sharing, and the private browser
 * Every library is vendored into the bundle, and the scan path runs without Google SDKs
 * 190 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
+* 24 unit tests in `android/app/src/test` check the Android app's native code that decides which page a login may be filled into, which requests the private browser blocks, and how links are cleaned, run with `gradlew testDebugUnitTest` and on every push
 
 ## Current Status: v0.9.4.6 - Final Bug Fixes and Polish
 
@@ -579,6 +580,7 @@ Third-party code keeps its own license. Full notices and license texts are in [T
 * jsQR 1.4.0 (extension/jsqr.js), copyright Cosmo Wolfe, under the Apache License, Version 2.0 (https://github.com/cozmo/jsQR).
 * QR code generator (extension/qrcode.js), qrcode-svg 1.1.0 by papnkukn, based on qrcodejs by davidshimjs and QRCode for JavaScript, copyright (c) 2009 Kazuhiko Arase, under the MIT License.
 * The BIP-39 English word list (extension/bip39-words.js), from Bitcoin Improvement Proposal 39, which states no license.
+* In the Android app: Capacitor and its Filesystem and Share plugins (MIT), the Apache Cordova Android framework that Capacitor includes, the AndroidX libraries, and the Kotlin standard library and kotlinx.coroutines (all Apache License, Version 2.0).
 
 The browser's EasyPrivacy and EasyList domain file, android/app/src/main/assets/browser/easylist-domains.txt, comes from the EasyList authors (https://easylist.to/) and keeps its own GPLv3 or CC BY-SA 3.0 license, described in EASYLIST-NOTICE.txt beside it.
 

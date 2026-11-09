@@ -31,3 +31,25 @@ jobs:
         run: npm audit --audit-level=moderate
       - name: Run the tests
         run: npm test
+
+  android-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - name: Install dependencies from the lockfile
+        run: npm ci
+      - name: Prepare the Android project
+        run: npx cap sync android
+      - name: Run the Android unit tests
+        working-directory: android
+        run: bash ./gradlew testDebugUnitTest --no-daemon
