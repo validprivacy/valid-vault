@@ -1669,18 +1669,18 @@ async function handleImported(payloadText) {
 async function setupKeyPackage(mk, isChange) {
   const defaults = keypackage.pickThreeQuestions()
   const nickname = await keypackage.getNickname()
-  const questionOptions = keypackage.SECURITY_QUESTIONS.map((label, value) => ({ label, value }))
+  const questionOptions = keypackage.COMPOUND_QUESTIONS.map((label, value) => ({ label, value }))
   const fields = [
     { label: 'Passphrase', secret: true, hint: PASSPHRASE_TIP },
     { label: 'Confirm passphrase', secret: true }
   ]
   defaults.forEach((q, i) => {
-    fields.push({ label: 'Question ' + (i + 1), options: questionOptions, value: q })
+    fields.push({ label: 'Compound Question ' + (i + 1), options: questionOptions, value: q })
     fields.push({ label: 'Answer ' + (i + 1), secret: true, hint: ANSWER_TIP })
   })
   return formDialog({
     title: isChange ? 'Change key protection' : 'Protect your master key',
-    text: (isChange ? 'This replaces the passphrase and answers for new key shares and key files. Key files you already saved keep their old passphrase. ' : 'Your master key only leaves this phone wrapped under a passphrase, plus three additional answers. Another device must enter all of them to accept it. You set this once; Share Master Key and Export Key reuse it. ') + 'Choose the questions whose answers you think no one else could know. Answers to easier questions can be easier to remember, but some questions are naturally more private than others, and those are the ones to choose. The best three are different for every person. A lost passphrase or answer cannot be recovered.',
+    text: (isChange ? 'This replaces the passphrase and Compound Questions for new key shares and key files. Key files you already saved keep their old passphrase. ' : 'Your master key only leaves this phone wrapped under a passphrase plus three Compound Questions. All four are combined into one secret, so a wrong guess never shows which part was wrong, and each answer multiplies the work for anyone guessing. Another device must enter all four to accept it. You set this once; Share Master Key and Export Key reuse it. ') + 'Choose the questions whose answers you think no one else could know. Answers to easier questions can be easier to remember, but some questions are naturally more private than others, and those are the ones to choose. The best three are different for every person. A lost passphrase or answer cannot be recovered.',
     fields,
     okLabel: 'Save',
     busyLabel: 'Securing...',
@@ -1708,10 +1708,10 @@ async function ensureKeyPackage(mk) {
 
 async function unlockKeyPackage(pkg, sourceLabel) {
   const fields = [{ label: 'Passphrase', secret: true }]
-    .concat(pkg.questions.map((q) => ({ label: keypackage.SECURITY_QUESTIONS[q], secret: true, hint: ANSWER_TIP })))
+    .concat(pkg.questions.map((q) => ({ label: keypackage.COMPOUND_QUESTIONS[q], secret: true, hint: ANSWER_TIP })))
   return formDialog({
     title: 'Accept master key',
-    text: sourceLabel + ': ' + (pkg.nickname || 'Master Key') + '. Enter the passphrase and the three answers it was protected with.',
+    text: sourceLabel + ': ' + (pkg.nickname || 'Master Key') + '. Enter the passphrase and the three Compound Question answers it was protected with.',
     fields,
     okLabel: 'Unlock key',
     busyLabel: 'Checking...',
@@ -1929,7 +1929,7 @@ async function exportKey() {
   let pkg
   try { pkg = await ensureKeyPackage(key()) } catch (e) { showMsg('msg-sync', 'Export failed: ' + errText(e), 'error'); return }
   if (!pkg) return
-  const destination = await chooseDestination('Export Key', 'The key file is wrapped under your passphrase and three answers. Keep the file, passphrase, and answers safe, ideally apart from your vault file.')
+  const destination = await chooseDestination('Export Key', 'The key file is wrapped under your passphrase and three Compound Question answers. Keep the file, passphrase, and answers safe, ideally apart from your vault file.')
   if (!destination) return
   const fname = keyFileName(await keypackage.getNickname())
   try {

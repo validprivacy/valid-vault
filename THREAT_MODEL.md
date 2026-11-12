@@ -10,7 +10,7 @@ This page says what Valid Vault is built to protect against, what it deliberatel
 ## Where the data lives
 
 * Only on your own devices, encrypted at rest. There is no Valid Vault server, account, or cloud copy, so there is no central database for anyone to breach
-* Between devices, only as an encrypted vault file or QR, and a key file or key QR protected by a passphrase plus three additional answers
+* Between devices, only as an encrypted vault file or QR, and a key file or key QR protected by a passphrase plus three Compound Questions
 
 ## In scope: what Valid Vault defends against
 
@@ -19,7 +19,7 @@ This page says what Valid Vault is built to protect against, what it deliberatel
 | A breach of a password manager's servers | There are no servers. Each vault exists only on its owner's devices |
 | A lost or stolen device that is locked | The vault is encrypted at rest. Unlocking needs the device's fingerprint or PIN through the Android Keystore or WebAuthn, or the master password through 600,000 PBKDF2-SHA256 rounds. No password hash is stored to attack |
 | A stolen vault file or vault QR | It is ciphertext and opens nothing without the master key |
-| A stolen key file or key QR | The key inside is wrapped under a passphrase that must stand on its own (16 or more characters with a letter, a number, and a symbol, screened against common passwords) plus three additional answers, stretched through 1,000,000 PBKDF2-SHA256 rounds. Nothing is stored to check a guess against |
+| A stolen key file or key QR | The key inside is wrapped under a passphrase that must stand on its own (16 or more characters with a letter, a number, and a symbol, screened against common passwords) plus three Compound Questions. All four are joined into one secret and stretched through 1,000,000 PBKDF2-SHA256 rounds, so a guess must get all four right at once. Nothing is stored to check a guess against |
 | Tampered or swapped records in storage | Every record is bound to its place in the vault as AES-GCM authenticated data, so a moved or edited record fails to decrypt |
 | A malicious web page | Pages never receive the master key. The key stays in the extension's background, and a page only receives the one value you picked to fill, after a real click. The extension and the private browser ask first before filling a page without https |
 | A look-alike phishing site | Logins fill only on the site address they were saved for. This needs no list of bad sites, so a phishing domain registered minutes ago gets nothing |
@@ -49,7 +49,7 @@ The full reasoning is in [Why Safe Browsing is off in the private browser](ROADM
 * **A compromised operating system, root access, or malware with access to the browser's or app's memory.** No app can protect secrets from the system it runs on
 * **Other browser extensions with access to every page.** They can read a field after Valid Vault fills it, the same as for any password manager
 * **Losing every copy at once.** You are the custodian of your vault: every device, every vault file, and every way to open the key file. A vault is gone only when all of them are gone together, so keep more than one copy. See [You Are the Custodian](README.md#you-are-the-custodian)
-* **Watching the screen while a key QR or vault QR is shown.** Do transfers somewhere private. A captured key QR still needs the passphrase and the three answers
+* **Watching the screen while a key QR or vault QR is shown.** Do transfers somewhere private. A captured key QR still needs the passphrase and the three Compound Question answers
 
 ## Tradeoffs chosen on purpose
 

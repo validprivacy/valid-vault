@@ -37,7 +37,7 @@ A local, encrypted, QR code portable password manager that works without a cloud
 
 > ✅ **Start Page Backgrounds - v0.9.4.7**
 >
-> Going back to a tab's start page after opening a site no longer leaves the background blank. The background is redrawn every time the start page comes back, and if the painter ever stops answering, the page draws it itself. The Android app's native code also has its own unit tests now, run on every push. See [CHANGELOG.md](CHANGELOG.md) for full details.
+> Going back to a tab's start page after opening a site no longer leaves the background blank. The background is redrawn every time the start page comes back, and if the painter ever stops answering, the page draws it itself. The answers that protect a key file are now called [Compound Questions](#security-model), and the README and guide show how they multiply the guesses needed. The private browser moves to Android's current edge-to-edge support. The Android app's native code also has its own unit tests now, run on every push. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ---
 
@@ -65,8 +65,8 @@ Valid Vault is built so that you hold your vault the way you hold cash or a hard
 **What you hold.** Two files and what is in your head:
 
 * The vault file, your encrypted logins, Personal Info, wallets, and bookmarks. It is ciphertext and opens nothing without the master key
-* The key file, your master key wrapped under your passphrase, plus three additional answers
-* The passphrase and the three answers that open the key file
+* The key file, your master key wrapped under your passphrase plus three Compound Questions
+* The passphrase and the three Compound Question answers that open the key file
 
 Every device you set up also holds a working copy of the vault and its own way to unlock it. Any unlocked device can write a fresh vault file and a fresh key file at any time.
 
@@ -210,10 +210,11 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * Sovereign scanner - the standard web camera plus a vendored jsQR decoder, without Google libraries; it reads on several processor cores at once, checks the whole camera image as well as the scan box, and shows pieces received, frames caught, and reads per second while it works
 * Encrypted vault backup - save directly to Downloads or share the file, inert without the matching master key
 * USB cold storage - Export Vault and Export Key to a USB drive for an offline backup you hold yourself; both files are encrypted, Valid Vault has no plaintext export, and the drive restores through the same import path as a QR share
-* Protected key transfer - the master key only leaves a device wrapped under a passphrase, plus three additional answers you pick, stretched with 1,000,000 PBKDF2 rounds; the same package goes into the key QR and the key file, and the receiving device must enter all of them to accept it
+* Protected key transfer - the master key only leaves a device wrapped under a passphrase plus three Compound Questions you pick, stretched with 1,000,000 PBKDF2 rounds; the same package goes into the key QR and the key file, and the receiving device must enter all of them to accept it
 * Set once, reused after - the protection is set on the first key share or export, then Share Master Key and Export Key are one click; Change Key Passphrase replaces it
 * The passphrase must stand on its own: at least 16 characters with a letter, a number, and a symbol, screened against common passwords, with four or more random words recommended
-* The three additional answers are mixed into the same key derivation as extra secret input, so they can only add work for an attacker; they never recover or reset anything, and nothing is stored to check them against
+* The three Compound Question answers are mixed into the same key derivation as extra secret input, so they can only add work for an attacker; they never recover or reset anything, and nothing is stored to check them against
+* One combined check - the passphrase and all three answers are verified together in a single unwrap, so a wrong guess never reveals which part was wrong; an attacker has to get all four right at once, and every possible answer multiplies the number of guesses
 * Logins, Web Credentials, and Personal Info all travel together through the same export/import/QR flow, merged by timestamp with tombstoned deletes
 * Bookmarks and Crypto Wallets travel inside the encrypted vault file (Export Vault / Import Vault) and the vault QR, with the same tombstoned-delete merge
 * Every import is checked in full before anything is written: a file made with a different key, a damaged section, or a file from a newer version is refused and nothing changes, the same login is never saved twice, deletes stay deleted, and importing the same file again changes nothing
@@ -265,7 +266,7 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * ✅ Crypto Wallets: encrypted seed phrase storage by wallet and account, with on-device seed word and checksum checking
 * ✅ Encrypted bookmarks with a popup bookmark icon and a searchable, reorderable side panel
 * ✅ Windows Hello unlock window for on-page unlocks; popup lock button fixed
-* ✅ Protected master key transfer: passphrase, plus three additional answers, required on the receiving device for both the key QR and the key file
+* ✅ Protected master key transfer: passphrase plus three Compound Questions, required on the receiving device for both the key QR and the key file
 * ✅ Masked Valid Vault dialogs for every password prompt in Manage, and fingerprint first for Personal Info edits
 * ✅ Password generator on new and change password fields, with length ranges set in Settings
 * ✅ Previous password safety net with one-click restore after a password change
@@ -318,7 +319,7 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 
 ## Sync and Backup Model
 
-Master key transport is deliberate. The primary path is a live QR stream: one device shows its vault or its protected key as a fountain QR, the other scans it. The key is always wrapped under a passphrase, plus three additional answers the owner picks, stretched with 1,000,000 PBKDF2 rounds, and the receiving device has to enter all of them before the key can be used, so a captured QR is as useless as a stolen file. For disaster recovery there is an offline path: Export Vault saves the encrypted vault directly to Downloads or through the native share sheet, and Export Key saves the same protected key package as a file. Both files can live on a USB drive as encrypted cold storage, and carrying that drive to another device is a complete transfer that never touches a network. Keeping the key file on a different drive from the vault file adds one more layer.
+Master key transport is deliberate. The primary path is a live QR stream: one device shows its vault or its protected key as a fountain QR, the other scans it. The key is always wrapped under a passphrase plus three Compound Questions the owner picks, stretched with 1,000,000 PBKDF2 rounds, and the receiving device has to enter all of them before the key can be used, so a captured QR is as useless as a stolen file. For disaster recovery there is an offline path: Export Vault saves the encrypted vault directly to Downloads or through the native share sheet, and Export Key saves the same protected key package as a file. Both files can live on a USB drive as encrypted cold storage, and carrying that drive to another device is a complete transfer that never touches a network. Keeping the key file on a different drive from the vault file adds one more layer.
 
 Because importing a key persists, the same vault file works the same way everywhere. On one computer, Uni-Vault does the rest: link Chrome and Edge to the same vault file, add a credential in either, and the other picks it up on its own. Between devices, export the vault and import it on the other side, or share it over QR, and the timestamp-based merge does the rest without a server or an account.
 
@@ -334,10 +335,26 @@ Recovery follows from the same model. As long as any device still unlocks the va
 
 * Passwords are wrapped with PBKDF2-SHA256 at 600,000 iterations
 * On Android, the master key is additionally wrapped by an Android Keystore key gated on device authentication, held in secure hardware on phones that have it
-* The master key only leaves a device wrapped at 1,000,000 PBKDF2 iterations under a passphrase, plus three additional answers, in both the key QR and the key file; the passphrase and answers are never stored. For comparison, Chrome and Google Password Manager export passwords as a plain CSV file, and Samsung Pass protects its export with one password
-* No verification hashes are stored; the AES-GCM auth tag is the only verifier
+* The master key only leaves a device wrapped at 1,000,000 PBKDF2 iterations under a passphrase plus three Compound Questions, in both the key QR and the key file; the passphrase and answers are never stored
+* No verification hashes are stored; the AES-GCM auth tag is the only verifier, so every guess against a stolen vault or key file pays the full key derivation
 * Exporting, importing, or sharing a key or vault requires fingerprint, device PIN, or password first, even while the vault is unlocked
 * Website Credentials, Crypto Wallets, and Bookmarks are each sealed as a single encrypted blob, so no domain name, username, password, seed word, saved address, or metadata is readable from storage
+
+**Compound Questions:**
+
+The key file and key QR are the master key wrapped under one secret built from four parts: the passphrase and the answers to three Compound Questions. All four are joined into a single input to one key derivation of 1,000,000 PBKDF2-SHA256 rounds, and the result is checked only by unwrapping. Someone holding a stolen key file gets one yes or no for the whole combination. A wrong guess never says whether the passphrase was right and an answer was wrong, so the guesses multiply: every passphrase they try, times every answer to the first question, times the second, times the third.
+
+The key is wrapped once, under all four parts together, on purpose. Wrapping it in separate layers, one per part, would give each layer its own yes or no. An attacker could then solve the passphrase first and each answer after it, one at a time, and the guesses would only add up. One wrap keeps them multiplying.
+
+The passphrase sets the floor, and each private answer multiplies it. At roughly 8,800 guesses a second on one current high-end graphics card:
+
+| What the attacker must guess | Combinations | Time to try them all |
+| --- | --- | --- |
+| A passphrase they have narrowed down to 1 million candidates | 1 million | About 2 minutes |
+| That same passphrase, plus three answers with about 1,000 plausible values each | 1 quadrillion | About 3,600 years |
+| A random 16-character passphrase, before any answers | About 10^31 | Far longer than the age of the universe |
+
+Answers are case-sensitive and stored nowhere, and the three questions come from a list of 10 that the owner chooses from, so the most private ones can be picked. An answer adds strength only when no one else can look it up, which is why the setup screen asks for the questions only you could answer. The answers never replace the passphrase: the key file is always at least as strong as its passphrase alone, which has to be at least 16 characters with a letter, a number, and a symbol and is screened against common passwords.
 
 **The scanner is self-contained.** It uses the web camera and a vendored jsQR decoder that runs entirely on the device, without Google's scanning libraries.
 
@@ -359,7 +376,7 @@ Recovery follows from the same model. As long as any device still unlocks the va
 * An unlocked vault only autofills. Viewing entries, changing unlock methods, and clearing the vault all ask for your fingerprint, device PIN, or password again.
 * Auto-lock runs on inactivity while the browser is active, and closing the browser always locks the vault. While the browser is in the background, the operating system may delay the timer slightly.
 * A save prompt stays with its browser tab for 45 seconds, so it survives sign-ins that hop across domains for SSO or MFA. After that it expires.
-* QR transfers pair two devices in one scan. A vault stream is encrypted under your master key, and a key stream is locked with your passphrase, plus three additional answers, so a captured QR can't be used on its own. Type those answers privately, as you would any password. For a transfer with no screen to watch at all, carry the encrypted files on a USB drive instead.
+* QR transfers pair two devices in one scan. A vault stream is encrypted under your master key, and a key stream is locked with your passphrase plus three Compound Questions, so a captured QR can't be used on its own. Type those answers privately, as you would any password. For a transfer with no screen to watch at all, carry the encrypted files on a USB drive instead.
 
 ## Crypto Wallet and Bookmark Security
 
@@ -400,7 +417,7 @@ Seed phrases are the highest-value secret most people own, and the common places
 **Limits and how they are covered:**
 
 * Malware that reaches the browser gets very little. Valid Vault never puts a password on the clipboard, where most password stealers look, the master key stays in the extension's background and never enters a web page, seed phrases and bookmarks are never sent to any page, and unlocking happens in Valid Vault's own window. The most it can reach is what autofill places into a page, one login at a time, only on the site that login belongs to, and the password lands masked. Malware with full control of the operating system can watch anything on that computer, as with any software, which auto-lock, hide-on-blur, and a kept-updated system round out.
-* Physical access is covered in layers. An unlocked vault still asks for fingerprint, PIN, or password before showing anything in Manage, changing unlock methods, or clearing the vault, and taking the vault anywhere else needs the master key, which only leaves a device behind a passphrase, plus three additional answers. What remains is someone learning those secrets, for example by watching you type them, and the rule for that is the oldest one in security: never show or tell anyone your password.
+* Physical access is covered in layers. An unlocked vault still asks for fingerprint, PIN, or password before showing anything in Manage, changing unlock methods, or clearing the vault, and taking the vault anywhere else needs the master key, which only leaves a device behind a passphrase plus three Compound Questions. What remains is someone learning those secrets, for example by watching you type them, and the rule for that is the oldest one in security: never show or tell anyone your password.
 
 ## Quick Start - Build and Run It Yourself
 
@@ -459,7 +476,7 @@ Passwords are drawn from `crypto.getRandomValues` with rejection sampling, so ev
 linkedvault.js links a browser to one vault file the user picks, through the browser's File System Access API. Each sync reads the file, refuses anything that is not a readable vault under the current master key, merges it into the local copy with the existing merge logic, and writes back when this browser has changes of its own or the merge brought something in, so every linked browser settles on the same vault. The browser saves through a temporary copy and swaps it in only when complete, and the local copy always stays intact, so an unreachable or bad file never costs data.
 
 **Protected Key Transport:**
-The master key is wrapped once under a passphrase, plus three additional answers the owner picks (PBKDF2-SHA256, 1,000,000 iterations, AES-GCM), and that package is what the key QR and the key file carry. The passphrase and the answers are joined into a single input to one key derivation, so the answers add secret material to the passphrase and never stand in for it. The ROADMAP's Design Decisions section explains the choice. The package is saved on the device alongside a SHA-256 key identifier so it is reused only while it matches the current key. A receiving device verifies the answers by unwrapping, the same verify-by-unwrap rule as every other unlock, and keeps the package so it can share onward.
+The master key is wrapped once under a passphrase plus three Compound Questions the owner picks (PBKDF2-SHA256, 1,000,000 iterations, AES-GCM), and that package is what the key QR and the key file carry. The passphrase and the answers are joined into a single input to one key derivation, so the answers add secret material to the passphrase and never stand in for it. Checking the parts separately, or wrapping the key once per part, would be weaker: each layer would give its own yes or no, letting an attacker solve the parts one at a time and turning multiplied guesses into added ones. The ROADMAP's Design Decisions section explains the choice. The package is saved on the device alongside a SHA-256 key identifier so it is reused only while it matches the current key. A receiving device verifies the answers by unwrapping, the same verify-by-unwrap rule as every other unlock, and keeps the package so it can share onward.
 
 **Sealed Sections:**
 Crypto Wallets and Bookmarks share one small module, sealed.js, that serializes a section, deflate-compresses it, and encrypts it as one AES-GCM blob with a fresh IV per write and the section's name as authenticated data. Each section merges by permanent record IDs with tombstoned deletes, so the same vault file converges on every device.

@@ -5,13 +5,14 @@ All notable changes to Valid Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.4.7] - 2026-11-09
+## [0.9.4.7] - 2026-11-12
 
-Start page backgrounds come back when you return to a tab's start page, and the Android app's native code now has its own tests.
+Start page backgrounds come back when you return to a tab's start page, the key protection answers become Compound Questions with an explanation of how they multiply the work for anyone guessing, the private browser moves to Android's current edge-to-edge support, and the Android app's native code now has its own tests.
 
 ### Fixed
 
 * **Blank start page after going back.** Opening a site from a new tab and then going back to that tab's start page left the background blank. The start page skipped redrawing a background it had already drawn, but Android can clear the drawing while the start page is hidden. Returning to a start page now always redraws its background, and if the background painter ever stops answering, the page draws the background itself instead, so it is never left blank.
+* **Private browser bars on Android 15 and later.** Google Play flagged the private browser for setting its status and navigation bars with calls Android 15 deprecated. It now uses AndroidX edge-to-edge support and its inset handling, which work the same on every Android version the app supports. The bars stay transparent and the browser's own top and bottom bars are drawn under them, as before. The Android version code moves to 30.
 
 ### Added
 
@@ -20,6 +21,7 @@ Start page backgrounds come back when you return to a tab's start page, and the 
 
 ### Changed
 
+* **Compound Questions.** The three answers that protect a key file and key QR are now called Compound Questions in the extension, the phone app, the guide, and the docs. The key protection form explains that the passphrase and all three answers are joined into one secret, so a wrong guess never shows which part was wrong and each answer multiplies the guesses. The guide and README show the math: a passphrase narrowed to a million candidates falls in about two minutes, and the same passphrase with three answers of about a thousand plausible values each takes about 3,600 years. They also explain why the key is wrapped once under all four parts instead of in separate layers. How the key is protected is unchanged, and existing key files open exactly as before.
 * **Third-party notices** now list everything bundled in the Android app: Capacitor and its Filesystem and Share plugins, the Ionic Filesystem library, the Apache Cordova Android framework, the AndroidX libraries, and the Kotlin standard library and kotlinx.coroutines.
 
 ### Removed

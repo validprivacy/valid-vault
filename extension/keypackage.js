@@ -16,7 +16,7 @@ const DAMAGED_KEY_MSG = 'That key file is damaged or incomplete. Nothing was cha
 const MAX_NICKNAME_LENGTH = 60
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]+/g
 
-const SECURITY_QUESTIONS = [
+const COMPOUND_QUESTIONS = [
   'Name of your first pet', 'Name of your favorite childhood toy', 'Your favorite childhood book',
   'Your mothers middle name', 'Name of your first school', 'Your childhood best friend first name',
   'Make of your first car', 'Name of your first employer', 'Your favorite childhood teacher last name',
@@ -45,7 +45,7 @@ const COMMON_BASES = new Set([
 const LEET_MAP = { '@': 'a', '4': 'a', '8': 'b', '3': 'e', '6': 'g', '1': 'i', '!': 'i', '|': 'l', '0': 'o', '$': 's', '5': 's', '7': 't', '2': 'z' }
 
 function pickThreeQuestions() {
-  const pool = SECURITY_QUESTIONS.map((q, i) => i)
+  const pool = COMPOUND_QUESTIONS.map((q, i) => i)
   const picked = []
   for (let i = 0; i < QUESTION_COUNT; i++) {
     const r = crypto.getRandomValues(new Uint32Array(1))[0] % pool.length
@@ -109,7 +109,7 @@ function isKeyPackage(obj) {
   if (obj.version !== undefined && !(Number.isInteger(obj.version) && obj.version >= 1 && obj.version <= KEY_FILE_VERSION)) return false
   if (obj.iterations !== undefined && obj.iterations !== EXPORT_ITERATIONS) return false
   if (!Array.isArray(obj.questions) || obj.questions.length !== QUESTION_COUNT) return false
-  if (!obj.questions.every((q) => Number.isInteger(q) && q >= 0 && q < SECURITY_QUESTIONS.length)) return false
+  if (!obj.questions.every((q) => Number.isInteger(q) && q >= 0 && q < COMPOUND_QUESTIONS.length)) return false
   if (!isByteArray(obj.salt, SALT_BYTES)) return false
   if (!obj.wrapped || typeof obj.wrapped !== 'object') return false
   return isByteArray(obj.wrapped.iv, WRAP_IV_BYTES) && isByteArray(obj.wrapped.wrapped, WRAPPED_KEY_BYTES)
@@ -173,7 +173,7 @@ async function getNickname() {
 }
 
 export {
-  SECURITY_QUESTIONS,
+  COMPOUND_QUESTIONS,
   pickThreeQuestions,
   passphraseProblem,
   isKeyPackage,

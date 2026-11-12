@@ -9,6 +9,8 @@
 ### v0.9.4.7 - Start Page Backgrounds (Nov 2026)
 
 * ✅ Returning to a tab's start page redraws its background instead of leaving it blank
+* ✅ Key protection answers renamed Compound Questions, with the form, guide, and docs explaining how they multiply the guesses needed
+* ✅ The private browser uses AndroidX edge-to-edge support in place of system bar calls deprecated in Android 15
 * ✅ A background painter that stops answering is replaced, and the page draws the background itself
 * ✅ 27 unit tests for the Android app's native code, run on every push
 * ✅ Third-party notices list everything bundled in the Android app
@@ -456,24 +458,22 @@ Argon2id resists GPU guessing better than PBKDF2, and it was evaluated for Valid
 What stands in front of a password guess today:
 
 * The master password never encrypts the vault. It unwraps a random 256-bit master key, and no hash is stored, so every guess needs a stolen copy of the wrapped key and a full 600,000-round PBKDF2-SHA256 derivation, the current OWASP recommendation
-* Key files and key QRs use 1,000,000 rounds under a passphrase screened against common passwords, plus three additional answers
+* Key files and key QRs use 1,000,000 rounds under a passphrase screened against common passwords, plus three Compound Questions
 * Day-to-day unlock is fingerprint or device PIN through Android Keystore or WebAuthn, which involves no password derivation at all
 
 A switch would also bring migration, compatibility, and performance costs, and another cryptographic implementation to test, so it waits for a demonstrated benefit that outweighs them. Argon2id will only be reconsidered if browsers add it to WebCrypto. The switch would follow the same pattern as the single-blob migration: an encrypted backup first, then conversion, verification, and rollback on any mismatch.
 
-### Why key files add three answers to the passphrase
+### Why key files use Compound Questions
 
-A key file or key QR carries the master key, so it gets the strongest protection Valid Vault applies anywhere: a passphrase, plus three additional answers the owner picks.
-
-Security questions have a poor reputation for good reason. Banks and websites used them to reset a forgotten password, so anyone who learned a mother's maiden name could take over the account. Valid Vault uses its answers in a different role:
+A key file or key QR carries the master key, so it gets the strongest protection Valid Vault applies anywhere: a passphrase plus three Compound Questions the owner picks.
 
 * The passphrase must stand on its own. It needs at least 16 characters with a letter, a number, and a symbol, it is screened against common passwords, and four or more random words are recommended
-* The passphrase and the three answers are joined into one input to a single 1,000,000-round PBKDF2-SHA256 derivation. An attacker has to guess all four together, so the answers can only add work, and the key is never weaker than the passphrase alone
+* The passphrase and the three answers are joined into one input to a single 1,000,000-round PBKDF2-SHA256 derivation. An attacker has to guess all four together, and a wrong guess never shows which part was wrong
+* The guesses multiply. A passphrase an attacker has narrowed down to a million candidates falls in about two minutes on one high-end graphics card. With three answers of about a thousand plausible values each, the same passphrase takes about 3,600 years
+* The key is wrapped once, under all four parts together. Separate layers, one per part, would each give their own yes or no, so an attacker could solve them one at a time and the guesses would only add up
 * The answers never recover, reset, or bypass anything. Nothing is stored to check them against, and a wrong answer fails exactly like a wrong passphrase, by failing to unwrap the key
 * The key file is only one half of a transfer. Without the separately exported vault file it opens nothing
-* The questions are chosen by the person, three out of ten. The form asks for the ones whose answers no one else could know. Answers to easier questions can be easier to remember, but some questions are naturally more private than others, and which ones are most private differs from person to person, so no two people's three are alike
-
-For comparison, Chrome and Google Password Manager export passwords as a plain CSV file, and Samsung Pass protects its export with a single password.
+* The questions are chosen by the person, three out of ten. The form asks for the ones whose answers no one else could know, since an answer adds strength only when it cannot be looked up
 
 ### Why 2FA codes live on the login
 

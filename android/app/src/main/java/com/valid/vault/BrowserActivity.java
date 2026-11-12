@@ -3,7 +3,14 @@ package com.valid.vault;
 import android.Manifest;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
-import android.app.Activity;
+import androidx.activity.ComponentActivity;
+import androidx.activity.EdgeToEdge;
+import androidx.activity.SystemBarStyle;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -37,7 +44,6 @@ import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.CookieManager;
@@ -86,7 +92,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
-public class BrowserActivity extends Activity {
+public class BrowserActivity extends ComponentActivity {
 
     static final String EXTRA_URL = "vv_browser_url";
     static final String EXTRA_FOCUS = "vv_browser_focus";
@@ -534,11 +540,11 @@ public class BrowserActivity extends Activity {
         switcher = buildSwitcher();
         root.addView(switcher, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        root.setOnApplyWindowInsetsListener((v, insets) -> {
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             readInsets(insets);
             root.setPadding(sideLeft, 0, sideRight, 0);
             layoutChrome();
-            return consumed(insets);
+            return WindowInsetsCompat.CONSUMED;
         });
 
         setContentView(root);
@@ -578,40 +584,17 @@ public class BrowserActivity extends Activity {
         if (intent != null) handleIntent(intent);
     }
 
-    @SuppressWarnings("deprecation")
     private void goEdgeToEdge() {
-        getWindow().setStatusBarColor(Color.TRANSPARENT);
-        getWindow().setNavigationBarColor(Color.TRANSPARENT);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            getWindow().setDecorFitsSystemWindows(false);
-        } else {
-            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
-        }
+        EdgeToEdge.enable(this, SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT), SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT));
     }
 
-    @SuppressWarnings("deprecation")
-    private WindowInsets consumed(WindowInsets insets) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return WindowInsets.CONSUMED;
-        return insets.consumeSystemWindowInsets();
-    }
-
-    @SuppressWarnings("deprecation")
-    private void readInsets(WindowInsets insets) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
-            statusInset = bars.top;
-            navInset = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
-            sideLeft = bars.left;
-            sideRight = bars.right;
-            imeInset = insets.isVisible(WindowInsets.Type.ime()) ? insets.getInsets(WindowInsets.Type.ime()).bottom : 0;
-        } else {
-            statusInset = insets.getSystemWindowInsetTop();
-            navInset = insets.getStableInsetBottom();
-            sideLeft = insets.getSystemWindowInsetLeft();
-            sideRight = insets.getSystemWindowInsetRight();
-            int bottom = insets.getSystemWindowInsetBottom();
-            imeInset = bottom > navInset ? bottom : 0;
-        }
+    private void readInsets(WindowInsetsCompat insets) {
+        Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+        statusInset = bars.top;
+        navInset = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+        sideLeft = bars.left;
+        sideRight = bars.right;
+        imeInset = insets.isVisible(WindowInsetsCompat.Type.ime()) ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
     }
 
     private boolean keyboardUp() {
@@ -2426,20 +2409,11 @@ public class BrowserActivity extends Activity {
         applyTheme();
     }
 
-    @SuppressWarnings("deprecation")
     private void applySystemBars() {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                android.view.WindowInsetsController controller = getWindow().getDecorView().getWindowInsetsController();
-                if (controller == null) return;
-                int mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-                controller.setSystemBarsAppearance(dayMode ? mask : 0, mask);
-            } else {
-                View decor = getWindow().getDecorView();
-                int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
-                if (dayMode) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                decor.setSystemUiVisibility(flags);
-            }
+            WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+            controller.setAppearanceLightStatusBars(dayMode);
+            controller.setAppearanceLightNavigationBars(dayMode);
         } catch (RuntimeException e) {
         }
     }
