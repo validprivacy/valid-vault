@@ -5,6 +5,19 @@ All notable changes to Valid Vault will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4.8] - 2026-11-23
+
+The Android private browser can save the page you are on as a bookmark.
+
+### Added
+
+* **Bookmark this page.** The private browser's menu now starts with Bookmark this page, in normal and Tor mode, and holding the Bookmarks button in the bottom bar does the same. Both open Valid Vault's save screen with the address and page title filled in, ask for your fingerprint or device PIN, and return you to the page after saving. A normal tap on Bookmarks still opens your bookmark list. The in-app guide covers both.
+
+### Changed
+
+* **About page links.** The phone app's About page links to the Chrome Web Store, the Discord, the Valid Privacy website, and the Play Store page for rating the app.
+* **Android version.** The Android version code moves to 32.
+
 ## [0.9.4.7] - 2026-11-12
 
 Start page backgrounds come back when you return to a tab's start page, the key protection answers become Compound Questions with an explanation of how they multiply the work for anyone guessing, the private browser moves to Android's current edge-to-edge support, and the Android app's native code now has its own tests.

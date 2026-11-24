@@ -39,6 +39,10 @@ A local, encrypted, QR code portable password manager that works without a cloud
 >
 > Going back to a tab's start page after opening a site no longer leaves the background blank. The background is redrawn every time the start page comes back, and if the painter ever stops answering, the page draws it itself. The answers that protect a key file are now called [Compound Questions](#security-model), and the README and guide show how they multiply the guesses needed. The private browser moves to Android's current edge-to-edge support. The Android app's native code also has its own unit tests now, run on every push. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
+> ✅ **Bookmark This Page - v0.9.4.8**
+>
+> The private browser on Android can now save the page you are on as a bookmark. Tap Bookmark this page at the top of the menu, or hold the Bookmarks button, then unlock and save. See [CHANGELOG.md](CHANGELOG.md) for full details.
+
 ---
 
 ## What is Valid Vault?
@@ -246,7 +250,7 @@ The reasoning is in [Design Decisions](ROADMAP.md#why-safe-browsing-is-off-in-th
 * 193 automated tests in `tests/` cover the extension and the phone app, run with `npm test` on Node's built-in test runner, with Playwright as a development tool that drives a headless Chromium
 * 27 unit tests in `android/app/src/test` check the Android app's native code that decides which page a login may be filled into, which requests the private browser blocks, how links are cleaned, and how the start page asks for its background, run with `gradlew testDebugUnitTest` and on every push
 
-## Current Status: v0.9.4.7 - Final Bug Fixes and Polish
+## Current Status: v0.9.4.8 - Final Bug Fixes and Polish
 
 **Completed:**
 

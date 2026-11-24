@@ -1,10 +1,15 @@
 # Valid Vault - Development Roadmap
 
-**Current Version:** v0.9.4.7 - **Status: Late Beta**
+**Current Version:** v0.9.4.8 - **Status: Late Beta**
 
 ---
 
 ## Version History (Completed)
+
+### v0.9.4.8 - Bookmark This Page (Nov 2026)
+
+* ✅ The private browser saves the current page as a bookmark from the top of its menu or by holding the Bookmarks button
+* ✅ 193 automated tests
 
 ### v0.9.4.7 - Start Page Backgrounds (Nov 2026)
 
