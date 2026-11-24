@@ -181,6 +181,7 @@ public class BrowserActivity extends ComponentActivity {
     private static final int MENU_SETTINGS = 11;
     private static final int MENU_FILL = 12;
     private static final int MENU_ABOUT = 13;
+    private static final int MENU_BOOKMARK = 14;
     private static final int FRAME_STROKE_DP = 2;
     private static final String FONT_UI = "sans-serif";
     private static final String FONT_MEDIUM = "sans-serif-medium";
@@ -790,6 +791,10 @@ public class BrowserActivity extends ComponentActivity {
         forwardButton = chromeButton(R.drawable.vv_ic_forward, "Forward", v -> goForward());
         ImageButton newTabButton = chromeButton(R.drawable.vv_ic_add, "New tab", v -> newTab(false));
         ImageButton bookmarks = chromeButton(R.drawable.vv_ic_bookmark, "Bookmarks", v -> openVault(LaunchTarget.TAB_BOOKMARKS, "Bookmarks"));
+        bookmarks.setOnLongClickListener(v -> {
+            bookmarkPage();
+            return true;
+        });
         ImageButton share = chromeButton(R.drawable.vv_ic_share, "Share", v -> sharePage());
         for (ImageButton b : new ImageButton[] { backButton, bookmarks, newTabButton, share, forwardButton }) {
             bar.addView(b, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
@@ -2292,6 +2297,7 @@ public class BrowserActivity extends ComponentActivity {
         boolean off = page && BrowserPrivacy.siteAllowed(tab.pageHost, allowedSnapshot);
         boolean pinned = page && BrowserPins.contains(pinsSnapshot, url);
         int order = 0;
+        menu.add(Menu.NONE, MENU_BOOKMARK, ++order, "Bookmark this page").setEnabled(page && !switching);
         if (torMode) {
             menu.add(Menu.NONE, MENU_NEW_IDENTITY, ++order, "New identity").setEnabled(!switching);
             menu.add(Menu.NONE, MENU_SAFER, ++order, "Safer: JavaScript off").setCheckable(true).setChecked(safer).setEnabled(!switching);
@@ -2306,7 +2312,8 @@ public class BrowserActivity extends ComponentActivity {
         popup.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             BrowserTab current = activeTab();
-            if (id == MENU_FILL) requestFill(current, false);
+            if (id == MENU_BOOKMARK) bookmarkPage();
+            else if (id == MENU_FILL) requestFill(current, false);
             else if (id == MENU_PIN) togglePin();
             else if (id == MENU_TRACKERS) toggleSite();
             else if (id == MENU_TOR) {
@@ -2655,6 +2662,27 @@ public class BrowserActivity extends ComponentActivity {
             startActivity(Intent.createChooser(send, "Share link"));
         } catch (Exception e) {
             Toast.makeText(this, "Could not share this link", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void bookmarkPage() {
+        String url = currentUrl();
+        if (url == null) {
+            Toast.makeText(this, "Open a page to bookmark it", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        BrowserTab tab = activeTab();
+        String title = tab == null || tab.web == null ? null : tab.web.getTitle();
+        Intent save = new Intent(this, MainActivity.class);
+        save.setAction(Intent.ACTION_SEND);
+        save.setType("text/plain");
+        save.putExtra(Intent.EXTRA_TEXT, url);
+        if (title != null && !title.isEmpty()) save.putExtra(Intent.EXTRA_SUBJECT, title);
+        save.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(save);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open Bookmarks", Toast.LENGTH_SHORT).show();
         }
     }
 
