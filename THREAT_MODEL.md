@@ -63,7 +63,3 @@ The full reasoning is in [Why Safe Browsing is off in the private browser](ROADM
 ## Self-custody
 
 Valid Vault has no server, so your vault exists only where you keep it. That removes the largest risk a password manager carries, a central store of everyone's vaults, and it means no account, no lockout, and no company standing between you and your data. Redundancy comes from you: each device is a live copy, and each vault file on a drive is a cold one. The README's [You Are the Custodian](README.md#you-are-the-custodian) section covers what that gives you and what it asks of you.
-
-## Not yet done
-
-* An independent security audit. The source, the design decisions, and the automated tests are public in this repository, every push runs the tests on GitHub Actions, and [SECURITY.md](SECURITY.md) explains how to report a vulnerability

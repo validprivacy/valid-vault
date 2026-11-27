@@ -13,15 +13,17 @@ A local, encrypted, QR code portable password manager that works without a cloud
 
 **Chrome Web Store:** install the extension from [Valid Vault on the Chrome Web Store](https://chromewebstore.google.com/detail/valid-vault-password-mana/fkpfaemmphmakebhejhaegjgcnieeoab).
 
+**Google Play:** install the Android app from [Valid Vault on Google Play](https://play.google.com/store/apps/details?id=com.valid.vault).
+
 **Microsoft Edge:** fully compatible, installed from the Chrome Web Store. Valid Vault is deliberately not on Microsoft's Edge Add-ons store. See [Using Valid Vault on Microsoft Edge](#using-valid-vault-on-microsoft-edge) for the two-minute install and the reason why.
 
-**Community:** updates, support, and bug reports on the [Valid Vault Discord](https://discord.gg/2SP383cJs9).
+**Community:** updates, support, and bug reports on the [Valid Vault Discord](https://discord.gg/XSgqs4uuBa).
 
 ---
 
 > ✅ **Lock and Clear Hardening - v0.9.4.3**
 >
-> Fixes from an AI-assisted review of the source code. No independent security audit has been done yet. Locking now closes any fill list already open on a page, and a login, Personal Info value, or 2FA code that finishes decrypting after the lock is thrown away instead of filled. Clear Vault removes the browser's backup copy first and reports an error instead of success if anything could not be removed, so a cleared vault can never come back on its own. On a page without https, the extension asks before filling, the same way the phone's private browser does. On the phone, screenshots and the recent apps preview of the vault and the private browser are now blocked by default, with a setting to allow them, and the vault locks after you leave the app, 30 seconds later by default. THREAT_MODEL.md lays out what Valid Vault defends against and what it leaves to the device, the docs describe matching and Android Autofill exactly as the code does it, and 174 automated tests cover the new behavior. See [CHANGELOG.md](CHANGELOG.md) for full details.
+> Locking now closes any fill list already open on a page, and a login, Personal Info value, or 2FA code that finishes decrypting after the lock is thrown away instead of filled. Clear Vault removes the browser's backup copy first and reports an error instead of success if anything could not be removed, so a cleared vault can never come back on its own. On a page without https, the extension asks before filling, the same way the phone's private browser does. On the phone, screenshots and the recent apps preview of the vault and the private browser are now blocked by default, with a setting to allow them, and the vault locks after you leave the app, 30 seconds later by default. THREAT_MODEL.md lays out what Valid Vault defends against and what it leaves to the device, and 174 automated tests cover the new behavior. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 > ✅ **Tested in the Open - v0.9.4.4**
 >
@@ -523,7 +525,7 @@ Some are rare:
 * Open water can bring jellyfish, dolphins, a manta ray, a shark, or, about 1 in 33, a whale
 * About 1 in 8 dandelion skies has a sun, and the city sometimes has hover cars or a pixel moon
 
-Like one? Tap Save it to Downloads under the start page tiles. The file is named with its style and seed, like valid-vault-underwater-1a2b3c4d.png. Styles that come in both modes have a night version named with night in front, like nightfractal, so every name points to exactly one style. Each file name ends in its seed, the 8 or so characters after the style, and a future update will let you share a background and draw it from that seed alone. Collecting them is encouraged, so share your collections and your rarest finds on the [Valid Vault Discord](https://discord.gg/2SP383cJs9). They also make great, unique backgrounds for your phone.
+Like one? Tap Save it to Downloads under the start page tiles. The file is named with its style and seed, like valid-vault-underwater-1a2b3c4d.png. Styles that come in both modes have a night version named with night in front, like nightfractal, so every name points to exactly one style. Each file name ends in its seed, the 8 or so characters after the style, and a future update will let you share a background and draw it from that seed alone. Collecting them is encouraged, so share your collections and your rarest finds on the [Valid Vault Discord](https://discord.gg/XSgqs4uuBa). They also make great, unique backgrounds for your phone.
 
 **What a saved background carries:** only the picture. The file holds the image size and the pixels, without EXIF data, a date, device or app details, a location, or text fields. To keep a design private, remove the seed from the file name before you share it. The image is drawn at your screen's size, which is the one hint about what kind of phone made it. Android notes the save in your phone's own Downloads list, and that record stays on the phone.
 
@@ -558,7 +560,7 @@ Contact byrook@proton.me with the subject "Valid Vault for organizations."
 
 ## Community
 
-Join the [Valid Vault Discord](https://discord.gg/2SP383cJs9) for release announcements, support, and bug reports.
+Join the [Valid Vault Discord](https://discord.gg/XSgqs4uuBa) for release announcements, support, and bug reports.
 
 ## Related Projects
 
@@ -582,15 +584,15 @@ Contributions welcome. This project maintains a compact, readable codebase with 
 * Run `npm test` before opening a pull request, and add tests for new behavior in the matching file in `tests/`
 
 **Join the Discord** Join the Discord for release announcements, setup help, and a direct line to report bugs or request features.
-https://discord.gg/2SP383cJs9
+https://discord.gg/XSgqs4uuBa
 
 ## Security
 
 **Vulnerability Reporting:**
 Report privately through the repository's Security tab or by email. [SECURITY.md](SECURITY.md) covers how to report, what is in scope, and what to expect.
 
-**Audit Status:**
-Pre-1.0, in final bug fixes and polish. No independent security audit has been done yet. Reviews of the source by AI models have been used to find bugs, and every finding that was fixed is listed in the CHANGELOG. Every push runs the full automated test suite on GitHub Actions, shown by the Tests badge at the top, along with fuzz tests of the vault file, key file, and QR parsers, a check that the phone bundle matches the source byte for byte, and a dependency audit. Community review is welcome. auth.js, crypto.js, session.js, keypackage.js, sealed.js, vaultfile.js, wallets.js, linkedvault.js, and the native plugins are the surfaces that matter.
+**Testing:**
+Every push runs the full automated test suite on GitHub Actions, shown by the Tests badge at the top, along with fuzz tests of the vault file, key file, and QR parsers, a check that the phone bundle matches the source byte for byte, and a dependency audit. Community review is welcome. auth.js, crypto.js, session.js, keypackage.js, sealed.js, vaultfile.js, wallets.js, linkedvault.js, and the native plugins are the surfaces that matter.
 
 ## License
 

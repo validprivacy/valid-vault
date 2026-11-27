@@ -2,7 +2,7 @@
 
 Valid Vault is a local, encrypted password manager for Chrome, Brave, Edge, and Android. It works without a cloud service, an account, or a sync server. Your data stays on your own devices, encrypted under a key only you can unlock, and moves between devices by QR code or encrypted file.
 
-**Status:** late beta, published on the [Chrome Web Store](https://chromewebstore.google.com/detail/valid-vault-password-mana/fkpfaemmphmakebhejhaegjgcnieeoab). The Android app is built from the same code and is in preparation for Google Play.
+**Status:** late beta, published on the [Chrome Web Store](https://chromewebstore.google.com/detail/valid-vault-password-mana/fkpfaemmphmakebhejhaegjgcnieeoab) and [Google Play](https://play.google.com/store/apps/details?id=com.valid.vault). The extension and the Android app are built from the same code.
 
 The full detail is in [README.md](README.md), the plan in [ROADMAP.md](ROADMAP.md), and every release in [CHANGELOG.md](CHANGELOG.md).
 
@@ -60,6 +60,6 @@ Valid Vault is licensed under FSL-1.1-ALv2. You may read, run, modify, and share
 * [Privacy Policy](https://validprivacy.github.io/vault-privacy.html)
 * [Threat model](THREAT_MODEL.md)
 * [Security policy](SECURITY.md)
-* [Valid Discord](https://discord.gg/2SP383cJs9)
+* [Valid Discord](https://discord.gg/XSgqs4uuBa)
 
 Copyright (c) 2025-2026 Michael Carter

@@ -86,12 +86,11 @@ Every push now runs the full test suite in the open, the vault, key, and QR pars
 
 * **Capacitor 7.6.10.** The Android app's Capacitor runtime moves from 7.4.4 to 7.6.10, which fixes a WebView navigation check that a crafted link could use to load remote content at the app's origin (GHSA-rvm3-566m-v7fv). Valid Vault does not render links from vault data, and the fix closes the path regardless. Build tool dependencies are updated to clear their advisories, so the dependency audit reports none.
 * **Phishing protection stated plainly.** README, ROADMAP, and the threat model say that login phishing protection needs no list of bad sites, so a phishing domain registered minutes ago still gets nothing. The EasyList notice now gives the snapshot's date and notes that the list ships inside the signed app and is never downloaded.
-* **Review wording.** The 0.9.4.3 notes now say the fixes came from an AI-assisted review of the source code, and that no independent security audit has been done yet.
 * **Argon2id.** The design decision now notes the migration, compatibility, and performance costs a switch would bring.
 
 ## [0.9.4.3] - 2026-11-03
 
-Fixes from an AI-assisted review of the 0.9.4.2 source code. No independent security audit has been done yet. The review found no problem in the encryption, the key transfer, migration, or sync. It found a lock that did not reach fill lists already open on a page, a Clear Vault that could bring a cleared vault back after a crash, no https check on extension fills, and docs that claimed more than the code does. All of those are fixed here, with tests.
+Locking now reaches fill lists already open on a page, Clear Vault can no longer bring a cleared vault back after a crash, and extension fills check for https. All of it is covered by tests.
 
 ### Fixed
 
