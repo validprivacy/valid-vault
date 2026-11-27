@@ -107,6 +107,7 @@
     .about { color: var(--text-dim); font-size: 14px; line-height: 1.8; max-width: 640px; }
     .about-title { color: var(--text); font-weight: 700; }
     .about a { color: var(--text); }
+    .about-links { display: flex; flex-direction: column; gap: 10px; max-width: 360px; margin-top: 16px; }
     a { color: var(--text); }
     textarea { resize: vertical; }
     .wv-toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -396,20 +397,14 @@
 
       <div id="tab-about" class="hidden">
         <h1>About Valid Vault</h1>
-        <p class="about">
-          <strong class="about-title">Valid Vault Password Manager <span id="about-version"></span></strong><br><br>
-          Hi, I'm Michael.<br><br>
-          I made a password manager. I found myself wanting two things I just wasn't getting: relevant features and far less betrayal.<br><br>
-          This is my best effort at common sense features with low friction, and how about we try zero betrayal?<br><br>
-          Valid Vault is fully local. The only person who sees, or even touches, your data is you. There is no cloud sync, by design. To me, the idea of this data, YOUR data, traveling across countries and even continents and then back to you is insane. That data never needed to leave your device. More things should be handled locally, and cloud connectivity should be approached with caution. Unfortunately, we see the opposite.<br><br>
-          Take back your data with the Valid ecosystem. Privacy should not come at a premium. Join the Discord to connect with other privacy-minded people.<br><br>
-          Regards,<br>
-          Michael<br><br>
-
-          <a href="https://discord.gg/2SP383cJs9" target="_blank" rel="noopener noreferrer">Discord</a><br>
-          <a href="https://github.com/validprivacy/valid-vault" target="_blank" rel="noopener noreferrer">GitHub Repository</a><br>
-          <a href="https://validprivacy.github.io/vault.html" target="_blank" rel="noopener noreferrer">Website</a>
-        </p>
+        <p class="about"><strong class="about-title">Valid Vault Password Manager <span id="about-version"></span></strong></p>
+        <p class="about">Now available on Google Play.</p>
+        <div class="about-links">
+          <button class="block" data-link="https://play.google.com/store/apps/details?id=com.valid.vault">Google Play</button>
+          <button class="secondary block" data-link="https://discord.gg/XSgqs4uuBa">Join the Discord</button>
+          <button class="secondary block" data-link="https://validprivacy.github.io">Valid Privacy Website</button>
+          <button class="secondary block" data-link="https://chromewebstore.google.com/detail/valid-vault-password-mana/fkpfaemmphmakebhejhaegjgcnieeoab/reviews">Rate the Extension</button>
+        </div>
       </div>
     </div>
   </div>

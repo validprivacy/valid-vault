@@ -939,6 +939,9 @@ async function promptAuth() {
 
 const aboutVersion = document.getElementById('about-version')
 if (aboutVersion) aboutVersion.textContent = 'v' + chrome.runtime.getManifest().version
+document.querySelectorAll('#tab-about [data-link]').forEach(link => {
+  link.addEventListener('click', () => window.open(link.dataset.link, '_blank', 'noopener'))
+})
 
 walletsTab.init({
   getKey: () => session.getMasterKey(),
